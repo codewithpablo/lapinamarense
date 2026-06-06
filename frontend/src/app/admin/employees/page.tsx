@@ -1,0 +1,239 @@
+﻿'use client';
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Sidebar from '@/components/admin/Sidebar';
+import { Plus, Loader2 } from 'lucide-react';
+
+interface Employee { id: number; name: string; role: string; phone: string; shift: string; active: boolean }
+const EMPTY_FORM = { name: '', role: '', phone: '', shift: 'Mañana', active: 'true' };
+const ROLES  = ['Cajera', 'Cajero', 'Repositor', 'Repositora', 'Encargado', 'Encargada', 'Administrativo'];
+const SHIFTS = ['Mañana', 'Tarde', 'Noche'];
+
+const ROLE_COLORS: Record<string, string> = {
+  'Cajera':       'bg-blue-100   text-blue-700   border-blue-200',
+  'Cajero':       'bg-blue-100   text-blue-700   border-blue-200',
+  'Repositor':    'bg-purple-100 text-purple-700 border-purple-200',
+  'Repositora':   'bg-purple-100 text-purple-700 border-purple-200',
+  'Encargado':    'bg-indigo-100 text-indigo-700 border-indigo-200',
+  'Encargada':    'bg-indigo-100 text-indigo-700 border-indigo-200',
+  'Administrativo':'bg-orange-100 text-orange-700 border-orange-200',
+};
+
+const INITIAL: Employee[] = [
+  { id: 1, name: 'Sofía Martínez',  role: 'Cajera',     phone: '2254-501001', shift: 'Mañana', active: true  },
+  { id: 2, name: 'Diego Fernández', role: 'Repositor',  phone: '2254-501002', shift: 'Tarde',  active: true  },
+  { id: 3, name: 'Laura Gómez',     role: 'Cajera',     phone: '2254-501003', shift: 'Tarde',  active: true  },
+  { id: 4, name: 'Martín Sosa',     role: 'Repositor',  phone: '2254-501004', shift: 'Mañana', active: false },
+  { id: 5, name: 'Ana Rodríguez',   role: 'Encargada',  phone: '2254-501005', shift: 'Mañana', active: true  },
+  { id: 6, name: 'Carlos López',    role: 'Repositor',  phone: '2254-501006', shift: 'Noche',  active: true  },
+];
+
+export default function EmployeesPage() {
+  const [employees, setEmployees]   = useState<Employee[]>(INITIAL);
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [deleteId, setDeleteId]     = useState<number | null>(null);
+  const [editing, setEditing]       = useState<Employee | null>(null);
+  const [form, setForm]             = useState(EMPTY_FORM);
+  const [saving, setSaving]         = useState(false);
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const openAdd  = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); };
+  const openEdit = (e: Employee) => {
+    setEditing(e);
+    setForm({ name: e.name, role: e.role, phone: e.phone, shift: e.shift, active: String(e.active) });
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.role) return;
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 300));
+    if (editing) {
+      setEmployees(prev => prev.map(e => e.id === editing.id ? { ...e, ...form, active: form.active === 'true' } : e));
+    } else {
+      const newId = Math.max(0, ...employees.map(e => e.id)) + 1;
+      setEmployees(prev => [...prev, { id: newId, ...form, active: form.active === 'true' }]);
+    }
+    setModalOpen(false);
+    setSaving(false);
+  };
+
+  const toggleActive = (id: number) => {
+    setEmployees(prev => prev.map(e => e.id === id ? { ...e, active: !e.active } : e));
+  };
+
+  const handleDelete = () => {
+    setEmployees(prev => prev.filter(e => e.id !== deleteId));
+    setDeleteId(null);
+  };
+
+  const active = employees.filter(e => e.active).length;
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar />
+      <main className="flex-1 p-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Empleados</h1>
+              <p className="text-gray-500 mt-1">Gestiona el personal del minimercado</p>
+            </div>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={openAdd}>
+              <Plus className="h-4 w-4 mr-2" /> Agregar empleado
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="border-0 shadow-sm"><CardContent className="pt-5">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Total empleados</p>
+              <p className="text-2xl font-bold mt-1">{employees.length}</p>
+            </CardContent></Card>
+            <Card className="border-0 shadow-sm"><CardContent className="pt-5">
+              <p className="text-xs text-green-600 uppercase tracking-wide">Activos</p>
+              <p className="text-2xl font-bold mt-1">{active}</p>
+            </CardContent></Card>
+            <Card className="border-0 shadow-sm"><CardContent className="pt-5">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Turnos hoy</p>
+              <p className="text-2xl font-bold mt-1">{employees.filter(e => e.active && e.shift === 'Mañana').length}</p>
+            </CardContent></Card>
+          </div>
+
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Lista de empleados</CardTitle>
+              <CardDescription>{employees.length} empleados registrados</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
+                    <TableHead className="pl-6 w-12">#</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Turno</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="pr-6 text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {employees.map(e => (
+                    <TableRow key={e.id} className="hover:bg-gray-50/50">
+                      <TableCell className="pl-6 text-gray-400 font-mono text-sm">{e.id}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
+                            {e.name[0]}
+                          </div>
+                          <span className="font-medium text-sm">{e.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-xs border ${ROLE_COLORS[e.role] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{e.role}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">{e.phone}</TableCell>
+                      <TableCell className="text-sm text-gray-500">{e.shift}</TableCell>
+                      <TableCell>
+                        <button onClick={() => toggleActive(e.id)} className="cursor-pointer">
+                          {e.active
+                            ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border hover:bg-green-200">Activo</Badge>
+                            : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border hover:bg-gray-200">Inactivo</Badge>}
+                        </button>
+                      </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openEdit(e)}>Editar</Button>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-200" onClick={() => setDeleteId(e.id)}>Eliminar</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+
+      {/* Add/Edit Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Editar empleado' : 'Nuevo empleado'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label>Nombre completo *</Label>
+              <Input placeholder="Ej: María González" value={form.name} onChange={e => set('name', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rol *</Label>
+              <Select value={form.role} onValueChange={v => set('role', v)}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar rol" /></SelectTrigger>
+                <SelectContent>
+                  {ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Teléfono</Label>
+              <Input placeholder="2254-XXXXXX" value={form.phone} onChange={e => set('phone', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Turno</Label>
+              <Select value={form.shift} onValueChange={v => set('shift', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SHIFTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <Select value={form.active} onValueChange={v => set('active', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Activo</SelectItem>
+                  <SelectItem value="false">Inactivo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={handleSave} disabled={saving || !form.name.trim() || !form.role}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {editing ? 'Guardar cambios' : 'Agregar empleado'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar empleado</DialogTitle>
+            <DialogDescription>Esta acción no se puede deshacer.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+

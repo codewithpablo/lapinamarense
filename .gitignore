@@ -1,0 +1,33 @@
+# Dependencies
+frontend/node_modules/
+backend/venv/
+
+# Build
+frontend/.next/
+frontend/out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+
+# Media uploads
+backend/media/
+
+# Claude
+.claude/
