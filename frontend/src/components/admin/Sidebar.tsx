@@ -131,10 +131,13 @@ export default function Sidebar({ className }: SidebarProps) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-green-600 to-green-800 rounded-lg flex items-center justify-center flex-shrink-0">
                 <LayoutDashboard className="h-5 w-5 text-white" />
               </div>
-              <span className="font-semibold text-gray-900">La Pinamarense</span>
+              <div className="flex flex-col leading-tight">
+                <span className="font-semibold text-gray-900 text-sm">La Pinamarense</span>
+                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Panel de administración</span>
+              </div>
             </div>
           )}
           <button

@@ -66,7 +66,9 @@ export const productsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   update: (id: number, data: any) => api.put(`/products/${id}/`, data),
-  patch:  (id: number, data: any) => api.patch(`/products/${id}/`, data),
+  patch:  (id: number, data: any) =>
+    api.patch(`/products/${id}/`, data,
+      data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
   delete: (id: number) => api.delete(`/products/${id}/`),
 };
 
