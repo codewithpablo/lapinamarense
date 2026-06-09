@@ -17,6 +17,7 @@ import {
   ChevronRight,
   LogOut,
   ShieldCheck,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { productsAPI } from '@/lib/api';
@@ -37,6 +38,8 @@ const sidebarItems: SidebarItem[] = [
   { title: 'Ventas',        href: '/admin/sales',      icon: BarChart3,       roles: ['superadmin','admin','empleado'] },
   { title: 'Productos',     href: '/admin/products',   icon: Package,         roles: ['superadmin','admin','empleado'] },
   { title: 'Categorias',    href: '/admin/categories', icon: Layers,          roles: ['superadmin','admin'] },
+  { title: 'Usuarios',      href: '/admin/usuarios',   icon: Users,           roles: ['superadmin'] },
+  { title: 'Mi perfil',     href: '/admin/perfil',     icon: User,            roles: ['superadmin','admin','empleado'] },
 ];
 
 interface SidebarProps {

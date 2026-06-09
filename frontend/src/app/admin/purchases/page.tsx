@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
+import { RowActions, RowAction, RowDangerAction } from '@/components/ui/table-actions';
 import { Plus, Loader2 } from 'lucide-react';
 
 interface Purchase { id: number; supplier: string; date: string; items: number; total: number; status: string; notes?: string }
@@ -97,56 +98,44 @@ export default function PurchasesPage() {
             </CardContent></Card>
           </div>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0">
               <CardTitle className="text-base">Historial de compras</CardTitle>
               <CardDescription>{purchases.length} compras registradas</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                    <TableHead className="pl-6 w-12">#</TableHead>
-                    <TableHead>Proveedor</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Productos</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="pr-6 text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {purchases.map(p => (
-                    <TableRow key={p.id} className="hover:bg-gray-50/50">
-                      <TableCell className="pl-6 text-gray-400 font-mono text-sm">{p.id}</TableCell>
-                      <TableCell className="font-medium text-sm">{p.supplier}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{new Date(p.date).toLocaleDateString('es-AR')}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{p.items} artículos</TableCell>
-                      <TableCell>
-                        <Select value={p.status} onValueChange={v => handleStatusChange(p.id, v)}>
-                          <SelectTrigger className="h-7 text-xs w-32 border-0 p-0 shadow-none focus:ring-0">
-                            <Badge className={`text-xs border cursor-pointer ${STATUS_COLORS[p.status]}`}>
-                              {STATUS_LABELS[p.status]}
-                            </Badge>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pendiente</SelectItem>
-                            <SelectItem value="received">Recibido</SelectItem>
-                            <SelectItem value="cancelled">Cancelado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">${p.total.toLocaleString('es-AR')}</TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => setDetailItem(p)}>Ver detalle</Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-200" onClick={() => setDeleteId(p.id)}>Eliminar</Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                data={purchases}
+                getRowKey={(p) => p.id}
+                emptyMessage="No hay compras registradas"
+                columns={[
+                  { key: 'id', header: '#', className: 'w-12 text-gray-400 font-mono', cell: (p) => p.id },
+                  { key: 'supplier', header: 'Proveedor', className: 'font-medium', cell: (p) => p.supplier },
+                  { key: 'date', header: 'Fecha', hideOnMobile: true, className: 'text-gray-500', cell: (p) => new Date(p.date).toLocaleDateString('es-AR') },
+                  { key: 'items', header: 'Productos', hideOnMobile: true, className: 'text-gray-500', cell: (p) => `${p.items} artículos` },
+                  { key: 'status', header: 'Estado', stopClick: true, cell: (p) => (
+                    <Select value={p.status} onValueChange={v => handleStatusChange(p.id, v)}>
+                      <SelectTrigger className="h-7 text-xs w-32 border-0 p-0 shadow-none focus:ring-0">
+                        <Badge className={`text-xs border cursor-pointer ${STATUS_COLORS[p.status]}`}>
+                          {STATUS_LABELS[p.status]}
+                        </Badge>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendiente</SelectItem>
+                        <SelectItem value="received">Recibido</SelectItem>
+                        <SelectItem value="cancelled">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) },
+                  { key: 'total', header: 'Total', align: 'right', className: 'font-semibold', cell: (p) => `$${p.total.toLocaleString('es-AR')}` },
+                  { key: 'actions', header: 'Acciones', align: 'right', stopClick: true, cell: (p) => (
+                    <RowActions>
+                      <RowAction onClick={() => setDetailItem(p)}>Ver detalle</RowAction>
+                      <RowDangerAction onClick={() => setDeleteId(p.id)}>Eliminar</RowDangerAction>
+                    </RowActions>
+                  ) },
+                ]}
+              />
             </CardContent>
           </Card>
         </div>

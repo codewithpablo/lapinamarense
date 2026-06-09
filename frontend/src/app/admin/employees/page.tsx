@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { RowActions, RowAction, RowDangerAction } from '@/components/ui/table-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
@@ -79,6 +80,48 @@ export default function EmployeesPage() {
 
   const active = employees.filter(e => e.active).length;
 
+  const columns: DataTableColumn<Employee>[] = [
+    { key: 'id', header: '#', className: 'w-12', cell: (e) => <span className="text-gray-400 font-mono text-sm">{e.id}</span> },
+    {
+      key: 'name', header: 'Nombre',
+      cell: (e) => (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
+            {e.name[0]}
+          </div>
+          <span className="font-medium text-sm">{e.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'role', header: 'Rol',
+      cell: (e) => (
+        <Badge className={`text-xs border ${ROLE_COLORS[e.role] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{e.role}</Badge>
+      ),
+    },
+    { key: 'phone', header: 'Teléfono', hideOnMobile: true, cell: (e) => <span className="text-sm text-gray-500">{e.phone}</span> },
+    { key: 'shift', header: 'Turno', hideOnMobile: true, cell: (e) => <span className="text-sm text-gray-500">{e.shift}</span> },
+    {
+      key: 'active', header: 'Estado', stopClick: true,
+      cell: (e) => (
+        <button onClick={() => toggleActive(e.id)} className="cursor-pointer">
+          {e.active
+            ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border hover:bg-green-200">Activo</Badge>
+            : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border hover:bg-gray-200">Inactivo</Badge>}
+        </button>
+      ),
+    },
+    {
+      key: 'actions', header: 'Acciones', align: 'right', stopClick: true,
+      cell: (e) => (
+        <RowActions>
+          <RowAction onClick={() => openEdit(e)}>Editar</RowAction>
+          <RowDangerAction onClick={() => setDeleteId(e.id)}>Eliminar</RowDangerAction>
+        </RowActions>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -116,52 +159,13 @@ export default function EmployeesPage() {
               <CardDescription>{employees.length} empleados registrados</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                    <TableHead className="pl-6 w-12">#</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Turno</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="pr-6 text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {employees.map(e => (
-                    <TableRow key={e.id} className="hover:bg-gray-50/50">
-                      <TableCell className="pl-6 text-gray-400 font-mono text-sm">{e.id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
-                            {e.name[0]}
-                          </div>
-                          <span className="font-medium text-sm">{e.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`text-xs border ${ROLE_COLORS[e.role] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{e.role}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">{e.phone}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{e.shift}</TableCell>
-                      <TableCell>
-                        <button onClick={() => toggleActive(e.id)} className="cursor-pointer">
-                          {e.active
-                            ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border hover:bg-green-200">Activo</Badge>
-                            : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border hover:bg-gray-200">Inactivo</Badge>}
-                        </button>
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEdit(e)}>Editar</Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-200" onClick={() => setDeleteId(e.id)}>Eliminar</Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <DataTable
+                data={employees}
+                getRowKey={(e) => e.id}
+                emptyMessage="No hay empleados registrados"
+                className="!bg-transparent !shadow-none !rounded-none"
+                columns={columns}
+              />
             </CardContent>
           </Card>
         </div>

@@ -17,6 +17,11 @@ import {
   AlertTriangle,
   ShoppingCart,
   Search,
+  ChevronRight,
+  Wallet,
+  Users,
+  Boxes,
+  Clock,
 } from 'lucide-react';
 
 const LineChart = dynamic(() => import('@/components/charts/ClientCharts').then(m => ({ default: m.Line })), { ssr: false });
@@ -67,6 +72,7 @@ export default function AdminPage() {
   const [searchStock, setSearchStock]   = useState('');
   const [updatingOrder, setUpdatingOrder] = useState<number | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const { user } = useAuth();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [user]);
@@ -360,6 +366,139 @@ export default function AdminPage() {
           </Card>
         </main>
       </div>
+
+      {/* ── RIGHT SIDEBAR — resumen del negocio (staff) ── */}
+      <aside className={`hidden lg:flex flex-shrink-0 border-l border-gray-100 bg-white flex-col overflow-y-auto no-scrollbar transition-all duration-300 ${rightCollapsed ? 'w-12' : 'w-64'}`}>
+        <div className={`h-12 shrink-0 flex items-center border-b border-gray-100 ${rightCollapsed ? 'justify-center' : 'justify-start px-3'}`}>
+          <button
+            onClick={() => setRightCollapsed(v => !v)}
+            className="p-1 rounded-md hover:bg-gray-100"
+            title={rightCollapsed ? 'Expandir panel' : 'Colapsar panel'}
+          >
+            <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${rightCollapsed ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {!rightCollapsed && (
+          <div className="p-5 flex flex-col gap-5">
+
+            {/* Perfil del usuario (staff) */}
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-2xl mx-auto mb-3 ring-2 ring-green-100 overflow-hidden flex items-center justify-center bg-green-50">
+                {user?.avatar
+                  ? <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  : <span className="text-lg font-bold text-green-700">
+                      {user?.first_name
+                        ? `${user.first_name[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
+                        : (user?.username?.[0]?.toUpperCase() ?? 'A')}
+                    </span>
+                }
+              </div>
+              <p className="font-bold text-gray-900 text-sm leading-tight">
+                {user?.first_name ? `${user.first_name} ${user.last_name}` : (user?.username ?? 'Staff')}
+              </p>
+              <p className="text-[11px] text-gray-400 mt-0.5 truncate">{user?.email ?? ''}</p>
+              {user?.role && (
+                <span className={`inline-block mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  user.role === 'superadmin' ? 'bg-purple-100 text-purple-700'
+                  : user.role === 'admin' ? 'bg-green-100 text-green-700'
+                  : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {user.role === 'superadmin' ? 'Super Admin' : user.role === 'admin' ? 'Administrador' : 'Empleado'}
+                </span>
+              )}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Encabezado */}
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Resumen del negocio</p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">{new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            </div>
+
+            {/* KPIs de ventas */}
+            <div className="space-y-2">
+              {[
+                { label: 'Ventas hoy',     value: `$${todaySales.toLocaleString('es-AR')}`,   Icon: Wallet,       cls: 'text-green-700 bg-green-50' },
+                { label: 'Ventas del mes', value: `$${monthlySales.toLocaleString('es-AR')}`, Icon: TrendingUp,   cls: 'text-blue-700 bg-blue-50' },
+                { label: 'Pedidos pend.',  value: pendingOrders.length,                       Icon: ShoppingCart, cls: 'text-orange-700 bg-orange-50' },
+              ].map(k => (
+                <div key={k.label} className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${k.cls}`}>
+                    <k.Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] text-gray-400">{k.label}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{loading ? '—' : k.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Stock */}
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5">Inventario</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-xl p-2.5 text-center ${outOfStock.length > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                  <p className={`text-lg font-extrabold ${outOfStock.length > 0 ? 'text-red-600' : 'text-gray-400'}`}>{outOfStock.length}</p>
+                  <p className="text-[10px] text-gray-500">Agotados</p>
+                </div>
+                <div className={`rounded-xl p-2.5 text-center ${lowStock.length > 0 ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                  <p className={`text-lg font-extrabold ${lowStock.length > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{lowStock.length}</p>
+                  <p className="text-[10px] text-gray-500">Stock bajo</p>
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-gray-100" />
+
+            {/* Totales del catálogo */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Catálogo</p>
+              {[
+                { label: 'Productos', value: products.length, Icon: Boxes, cls: 'text-purple-700 bg-purple-50' },
+                { label: 'Clientes',  value: customerCount,   Icon: Users, cls: 'text-teal-700 bg-teal-50' },
+              ].map(k => (
+                <div key={k.label} className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${k.cls}`}>
+                    <k.Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] text-gray-400">{k.label}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{loading ? '—' : k.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Últimos pedidos pendientes */}
+            {pendingOrders.length > 0 && (<>
+              <hr className="border-gray-100" />
+              <div>
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <Clock className="h-3 w-3 text-gray-400" />
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">A entregar</p>
+                </div>
+                <div className="space-y-2">
+                  {pendingOrders.slice(0, 4).map(order => (
+                    <div key={order.id} className="p-2.5 bg-gray-50 rounded-xl">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-semibold text-gray-800 truncate">{order.user.username}</span>
+                        <span className="text-xs font-bold text-gray-900">${Number(order.total_amount).toLocaleString('es-AR')}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 truncate">{order.delivery_address}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>)}
+
+          </div>
+        )}
+      </aside>
 
       <Dialog open={!!confirmOrder} onOpenChange={() => setConfirmOrder(null)}>
         <DialogContent className="max-w-md p-0 overflow-hidden gap-0">

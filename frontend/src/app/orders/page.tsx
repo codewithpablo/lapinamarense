@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { Loader2, ArrowRight, ShoppingBag, ChevronDown, Check } from 'lucide-react';
 import Loader from '@/components/ui/loader';
 
@@ -151,101 +151,52 @@ export default function OrdersPage() {
             </div>
 
           ) : (
-            <>
-            {/* ── Tabla completa (desktop) ── */}
-            <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
-                    <TableHead className="pl-5 py-2.5 w-16 text-xs font-semibold text-gray-500">#</TableHead>
-                    <TableHead className="py-2.5 text-xs font-semibold text-gray-500">Fecha</TableHead>
-                    <TableHead className="py-2.5 text-xs font-semibold text-gray-500">Productos</TableHead>
-                    <TableHead className="py-2.5 text-xs font-semibold text-gray-500">Estado</TableHead>
-                    <TableHead className="py-2.5 text-xs font-semibold text-gray-500">Total</TableHead>
-                    <TableHead className="pr-5 py-2.5 text-right text-xs font-semibold text-gray-500"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map(order => (
-                    <TableRow key={order.id} className="hover:bg-gray-50/60 border-b border-gray-50 last:border-0">
-                      <TableCell className="pl-5 py-2.5 font-mono text-xs text-gray-400">
-                        {order.id}
-                      </TableCell>
-                      <TableCell className="py-2.5 text-xs text-gray-600 whitespace-nowrap">
-                        {new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </TableCell>
-                      <TableCell className="py-2.5 max-w-[180px]">
-                        <p className="text-xs text-gray-700 truncate">
-                          {order.items.map(i => i.product.name).join(', ')}
-                        </p>
-                        <p className="text-[10px] text-gray-400">{order.items.length} {order.items.length === 1 ? 'producto' : 'productos'}</p>
-                      </TableCell>
-                      <TableCell className="py-2.5">
-                        {isStaff(user?.role)
-                          ? <StatusChanger order={order} onUpdate={handleStatusUpdate} />
-                          : <StatusBadge status={order.status} />
-                        }
-                      </TableCell>
-                      <TableCell className="py-2.5 font-semibold text-xs text-gray-900 whitespace-nowrap">
-                        ${Number(order.total_amount).toLocaleString('es-AR')}
-                      </TableCell>
-                      <TableCell className="pr-5 py-2.5 text-right">
-                        <button
-                          className="text-xs text-green-700 hover:text-green-900 font-medium hover:underline"
-                          onClick={() => setSelected(order)}
-                        >
-                          Ver detalle
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* ── Tabla compacta (mobile): Fecha · # · Estado · Total ── */}
-            <div className="lg:hidden bg-white rounded-xl shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
-                    <TableHead className="pl-3 py-2.5 text-[11px] font-semibold text-gray-500">Fecha</TableHead>
-                    <TableHead className="py-2.5 w-10 text-[11px] font-semibold text-gray-500">#</TableHead>
-                    <TableHead className="py-2.5 text-[11px] font-semibold text-gray-500">Estado</TableHead>
-                    <TableHead className="py-2.5 text-right text-[11px] font-semibold text-gray-500">Total</TableHead>
-                    <TableHead className="pr-3 py-2.5 w-8 text-[11px] font-semibold text-gray-500"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map(order => (
-                    <TableRow
-                      key={order.id}
-                      className="hover:bg-gray-50/60 border-b border-gray-50 last:border-0 cursor-pointer"
-                      onClick={() => setSelected(order)}
-                    >
-                      <TableCell className="pl-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
-                        {new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
-                      </TableCell>
-                      <TableCell className="py-3 font-mono text-[11px] font-semibold text-gray-400">
-                        {order.id}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {isStaff(user?.role)
-                          ? <div onClick={e => e.stopPropagation()}><StatusChanger order={order} onUpdate={handleStatusUpdate} /></div>
-                          : <StatusBadge status={order.status} />
-                        }
-                      </TableCell>
-                      <TableCell className="py-3 text-right font-semibold text-[11px] text-gray-900 whitespace-nowrap">
-                        ${Number(order.total_amount).toLocaleString('es-AR')}
-                      </TableCell>
-                      <TableCell className="pr-3 py-3 text-right">
-                        <ArrowRight className="h-4 w-4 text-gray-300 inline-block" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            </>
+            <DataTable
+              data={orders}
+              getRowKey={(o) => o.id}
+              onRowClick={(o) => setSelected(o)}
+              columns={[
+                {
+                  key: 'id', header: '#', className: 'w-16',
+                  cell: (order) => <span className="font-mono text-xs text-gray-400">{order.id}</span>,
+                },
+                {
+                  key: 'fecha', header: 'Fecha',
+                  cell: (order) => (
+                    <span className="text-xs text-gray-600 whitespace-nowrap">
+                      {new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'productos', header: 'Productos', hideOnMobile: true,
+                  cell: (order) => (
+                    <div className="max-w-[180px]">
+                      <p className="text-xs text-gray-700 truncate">{order.items.map(i => i.product.name).join(', ')}</p>
+                      <p className="text-[10px] text-gray-400">{order.items.length} {order.items.length === 1 ? 'producto' : 'productos'}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'estado', header: 'Estado', stopClick: true,
+                  cell: (order) => isStaff(user?.role)
+                    ? <StatusChanger order={order} onUpdate={handleStatusUpdate} />
+                    : <StatusBadge status={order.status} />,
+                },
+                {
+                  key: 'total', header: 'Total', align: 'right',
+                  cell: (order) => (
+                    <span className="font-semibold text-xs text-gray-900 whitespace-nowrap">
+                      ${Number(order.total_amount).toLocaleString('es-AR')}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'ver', header: '', align: 'right', className: 'w-8',
+                  cell: () => <ArrowRight className="h-4 w-4 text-gray-300 inline-block" />,
+                },
+              ]}
+            />
           )}
         </div>
       </main>

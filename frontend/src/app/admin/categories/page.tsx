@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { RowActions, RowAction, RowDangerAction } from '@/components/ui/table-actions';
 import Sidebar from '@/components/admin/Sidebar';
 import { Loader2, Tag, Plus } from 'lucide-react';
 import Loader from '@/components/ui/loader';
@@ -61,6 +62,46 @@ export default function CategoriesPage() {
     finally  { setDeleting(false); }
   };
 
+  const columns: DataTableColumn<Category>[] = [
+    {
+      key: 'id',
+      header: '#',
+      className: 'w-12',
+      cell: (c) => <span className="text-gray-400 font-mono text-sm">{c.id}</span>,
+    },
+    {
+      key: 'name',
+      header: 'Nombre',
+      cell: (c) => (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
+            <Tag className="h-3.5 w-3.5 text-green-600" />
+          </div>
+          <span className="font-medium text-sm">{c.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'description',
+      header: 'Descripción',
+      hideOnMobile: true,
+      className: 'max-w-xs',
+      cell: (c) => <span className="text-sm text-gray-500 truncate block">{c.description}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      align: 'right',
+      stopClick: true,
+      cell: (c) => (
+        <RowActions>
+          <RowAction onClick={() => openEdit(c)}>Editar</RowAction>
+          <RowDangerAction onClick={() => setDeleteId(c.id)}>Eliminar</RowDangerAction>
+        </RowActions>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -81,40 +122,13 @@ export default function CategoriesPage() {
               {loading ? (
                 <Loader />
               ) : (
-                <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                      <TableHead className="pl-6 w-12">#</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead className="pr-6 text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.map(c => (
-                      <TableRow key={c.id} className="hover:bg-gray-50/50">
-                        <TableCell className="pl-6 text-gray-400 font-mono text-sm">{c.id}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
-                              <Tag className="h-3.5 w-3.5 text-green-600" />
-                            </div>
-                            <span className="font-medium text-sm">{c.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500 max-w-xs truncate">{c.description}</TableCell>
-                        <TableCell className="pr-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => openEdit(c)}>Editar</Button>
-                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-200" onClick={() => setDeleteId(c.id)}>Eliminar</Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </div>
+                <DataTable
+                  data={categories}
+                  getRowKey={(c) => c.id}
+                  columns={columns}
+                  emptyMessage="No hay categorías"
+                  className="shadow-none rounded-none rounded-b-xl bg-transparent"
+                />
               )}
             </CardContent>
           </Card>

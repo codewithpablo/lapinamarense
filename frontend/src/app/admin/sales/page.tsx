@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ordersAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
 import { ShoppingCart, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
@@ -76,6 +76,102 @@ export default function SalesPage() {
     revenue:   orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total_amount), 0),
   };
 
+  const columns: DataTableColumn<Order>[] = [
+    {
+      key: 'id',
+      header: 'Pedido',
+      className: 'w-20',
+      cell: (order) => (
+        <span className="font-mono text-sm text-gray-400">#{order.id}</span>
+      ),
+    },
+    {
+      key: 'client',
+      header: 'Cliente',
+      cell: (order) => (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
+            {order.user.username[0].toUpperCase()}
+          </div>
+          <span className="font-medium text-sm">{order.user.username}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'address',
+      header: 'Dirección',
+      hideOnMobile: true,
+      cell: (order) => (
+        <span className="block text-sm text-gray-500 max-w-[160px] truncate">
+          {order.delivery_address}
+        </span>
+      ),
+    },
+    {
+      key: 'phone',
+      header: 'Teléfono',
+      hideOnMobile: true,
+      cell: (order) => (
+        <span className="text-sm text-gray-500">{order.phone}</span>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Fecha',
+      hideOnMobile: true,
+      cell: (order) => (
+        <span className="text-sm text-gray-500 whitespace-nowrap">
+          {new Date(order.created_at).toLocaleString('es-AR', {
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+          })}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      cell: (order) => (
+        <Badge className={`text-xs font-medium border ${STATUS_COLORS[order.status]}`}>
+          {STATUS_LABELS[order.status]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'total',
+      header: 'Total',
+      align: 'right',
+      cell: (order) => (
+        <span className="font-semibold">
+          ${Number(order.total_amount).toLocaleString('es-AR')}
+        </span>
+      ),
+    },
+    {
+      key: 'change-status',
+      header: 'Cambiar estado',
+      className: 'w-44',
+      stopClick: true,
+      cell: (order) => (
+        <Select
+          value={order.status}
+          onValueChange={(val) => updateOrderStatus(order.id, val)}
+          disabled={updatingId === order.id}
+        >
+          <SelectTrigger className="h-8 text-xs w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="pending">Pendiente</SelectItem>
+            <SelectItem value="confirmed">Confirmado</SelectItem>
+            <SelectItem value="preparing">En preparación</SelectItem>
+            <SelectItem value="delivered">Entregado</SelectItem>
+            <SelectItem value="cancelled">Cancelado</SelectItem>
+          </SelectContent>
+        </Select>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -117,8 +213,8 @@ export default function SalesPage() {
           </div>
 
           {/* Table */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0">
               <CardTitle className="text-base">Todos los pedidos</CardTitle>
               <CardDescription>Hacé clic en el estado para cambiarlo</CardDescription>
             </CardHeader>
@@ -126,81 +222,16 @@ export default function SalesPage() {
               {loading ? (
                 <Loader />
               ) : orders.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
+                <div className="bg-white rounded-xl shadow-sm flex flex-col items-center justify-center py-16 text-gray-400 gap-2">
                   <ShoppingCart className="h-8 w-8" />
                   <p className="text-sm">No hay ventas registradas</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                      <TableHead className="pl-6 w-20">Pedido</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Dirección</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="pr-6 w-44">Cambiar estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id} className="hover:bg-gray-50/50">
-                        <TableCell className="pl-6 font-mono text-sm text-gray-400">
-                          #{order.id}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
-                              {order.user.username[0].toUpperCase()}
-                            </div>
-                            <span className="font-medium text-sm">{order.user.username}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500 max-w-[160px] truncate">
-                          {order.delivery_address}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">
-                          {order.phone}
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500 whitespace-nowrap">
-                          {new Date(order.created_at).toLocaleString('es-AR', {
-                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`text-xs font-medium border ${STATUS_COLORS[order.status]}`}>
-                            {STATUS_LABELS[order.status]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          ${Number(order.total_amount).toLocaleString('es-AR')}
-                        </TableCell>
-                        <TableCell className="pr-6">
-                          <Select
-                            value={order.status}
-                            onValueChange={(val) => updateOrderStatus(order.id, val)}
-                            disabled={updatingId === order.id}
-                          >
-                            <SelectTrigger className="h-8 text-xs w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pendiente</SelectItem>
-                              <SelectItem value="confirmed">Confirmado</SelectItem>
-                              <SelectItem value="preparing">En preparación</SelectItem>
-                              <SelectItem value="delivered">Entregado</SelectItem>
-                              <SelectItem value="cancelled">Cancelado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </div>
+                <DataTable
+                  data={orders}
+                  getRowKey={(order) => order.id}
+                  columns={columns}
+                />
               )}
             </CardContent>
           </Card>

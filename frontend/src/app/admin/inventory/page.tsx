@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { RowActions, RowAction } from '@/components/ui/table-actions';
 import Sidebar from '@/components/admin/Sidebar';
 import { Loader2, Package, Minus, Plus, AlertTriangle, XCircle } from 'lucide-react';
 import Loader from '@/components/ui/loader';
@@ -125,8 +126,8 @@ export default function InventoryPage() {
           )}
 
           {/* Full inventory table */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0">
               <CardTitle className="text-base">Estado del inventario</CardTitle>
               <CardDescription>Hacé clic en &quot;Ajustar&quot; para modificar el stock</CardDescription>
             </CardHeader>
@@ -134,39 +135,35 @@ export default function InventoryPage() {
               {loading ? (
                 <Loader />
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                      <TableHead className="pl-6 w-12">#</TableHead>
-                      <TableHead>Producto</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Precio</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead className="pr-6 text-right">Acción</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map(p => (
-                      <TableRow key={p.id} className="hover:bg-gray-50/50">
-                        <TableCell className="pl-6 text-gray-400 font-mono text-sm">{p.id}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
-                              <Package className="h-3.5 w-3.5 text-gray-500" />
-                            </div>
-                            <span className="font-medium text-sm">{p.name}</span>
+                <DataTable
+                  data={products}
+                  getRowKey={(p) => p.id}
+                  columns={[
+                    { key: 'id', header: '#', className: 'w-12', cell: (p) => <span className="text-gray-400 font-mono text-sm">{p.id}</span> },
+                    {
+                      key: 'producto',
+                      header: 'Producto',
+                      cell: (p) => (
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
+                            <Package className="h-3.5 w-3.5 text-gray-500" />
                           </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">{p.category_name || p.category?.name || '—'}</TableCell>
-                        <TableCell className="font-medium text-sm">${Number(p.price).toLocaleString('es-AR')}</TableCell>
-                        <TableCell><StockBadge stock={p.stock} /></TableCell>
-                        <TableCell className="pr-6 text-right">
-                          <Button variant="outline" size="sm" onClick={() => openAdjust(p)}>Ajustar</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <span className="font-medium text-sm">{p.name}</span>
+                        </div>
+                      ),
+                    },
+                    { key: 'categoria', header: 'Categoría', hideOnMobile: true, cell: (p) => <span className="text-sm text-gray-500">{p.category_name || p.category?.name || '—'}</span> },
+                    { key: 'precio', header: 'Precio', cell: (p) => <span className="font-medium text-sm">${Number(p.price).toLocaleString('es-AR')}</span> },
+                    { key: 'stock', header: 'Stock', cell: (p) => <StockBadge stock={p.stock} /> },
+                    {
+                      key: 'accion',
+                      header: 'Acción',
+                      align: 'right',
+                      stopClick: true,
+                      cell: (p) => <RowActions><RowAction onClick={() => openAdjust(p)}>Ajustar</RowAction></RowActions>,
+                    },
+                  ]}
+                />
               )}
             </CardContent>
           </Card>

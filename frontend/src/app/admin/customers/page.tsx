@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { RowActions, RowAction } from '@/components/ui/table-actions';
 import Sidebar from '@/components/admin/Sidebar';
 import { Plus } from 'lucide-react';
 import Loader from '@/components/ui/loader';
@@ -61,6 +62,74 @@ export default function CustomersPage() {
     );
   }
 
+  const columns: DataTableColumn<Customer>[] = [
+    {
+      key: 'id',
+      header: '#',
+      className: 'w-12',
+      cell: (customer) => <span className="text-gray-400 font-mono text-sm">{customer.id}</span>,
+    },
+    {
+      key: 'name',
+      header: 'Nombre',
+      cell: (customer) => (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
+            {customer.first_name[0]}
+          </div>
+          <span className="font-medium text-sm">{customer.first_name} {customer.last_name}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'username',
+      header: 'Usuario',
+      hideOnMobile: true,
+      cell: (customer) => <span className="text-sm text-gray-500">@{customer.username}</span>,
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      hideOnMobile: true,
+      cell: (customer) => <span className="text-sm text-gray-500">{customer.email}</span>,
+    },
+    {
+      key: 'phone',
+      header: 'Teléfono',
+      hideOnMobile: true,
+      cell: (customer) => <span className="text-sm text-gray-500">{customer.phone || '—'}</span>,
+    },
+    {
+      key: 'address',
+      header: 'Dirección',
+      hideOnMobile: true,
+      cell: (customer) => <span className="text-sm text-gray-500 max-w-[160px] truncate block">{customer.address || '—'}</span>,
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cell: () => (
+        <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border">Activo</Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      align: 'right',
+      stopClick: true,
+      cell: (customer) => (
+        <RowActions>
+          <RowAction onClick={() => handleViewOrders(customer.id)}>
+            Ver pedidos
+          </RowAction>
+          <RowAction onClick={() => handleEditCustomer(customer.id)}>
+            Editar
+          </RowAction>
+        </RowActions>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -77,62 +146,18 @@ export default function CustomersPage() {
             </Button>
           </div>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
+          <Card className="border-0 shadow-none bg-transparent">
+            <CardHeader className="px-0">
               <CardTitle className="text-base">Lista de clientes</CardTitle>
               <CardDescription>{customers.length} clientes registrados</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {customers.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No hay clientes registrados</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                      <TableHead className="pl-6 w-12">#</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Usuario</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Teléfono</TableHead>
-                      <TableHead>Dirección</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="pr-6 text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((customer) => (
-                      <TableRow key={customer.id} className="hover:bg-gray-50/50">
-                        <TableCell className="pl-6 text-gray-400 font-mono text-sm">{customer.id}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-semibold shrink-0">
-                              {customer.first_name[0]}
-                            </div>
-                            <span className="font-medium text-sm">{customer.first_name} {customer.last_name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-500">@{customer.username}</TableCell>
-                        <TableCell className="text-sm text-gray-500">{customer.email}</TableCell>
-                        <TableCell className="text-sm text-gray-500">{customer.phone || '—'}</TableCell>
-                        <TableCell className="text-sm text-gray-500 max-w-[160px] truncate">{customer.address || '—'}</TableCell>
-                        <TableCell>
-                          <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border">Activo</Badge>
-                        </TableCell>
-                        <TableCell className="pr-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleViewOrders(customer.id)}>
-                              Ver pedidos
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEditCustomer(customer.id)}>
-                              Editar
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+              <DataTable
+                data={customers}
+                getRowKey={(customer) => customer.id}
+                columns={columns}
+                emptyMessage="No hay clientes registrados"
+              />
             </CardContent>
           </Card>
         </div>

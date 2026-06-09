@@ -1,12 +1,12 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { RowActions, RowAction, RowDangerAction } from '@/components/ui/table-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
@@ -58,6 +58,30 @@ export default function SuppliersPage() {
     finally { setDeleteId(null); }
   };
 
+  const columns: DataTableColumn<Supplier>[] = [
+    { key: 'id', header: '#', className: 'w-12', cell: (s) => <span className="text-gray-400 font-mono text-sm">{s.id}</span> },
+    { key: 'name', header: 'Empresa', cell: (s) => <span className="font-medium text-sm">{s.name}</span> },
+    { key: 'contact', header: 'Contacto', cell: (s) => <span className="text-sm text-gray-600">{s.contact}</span> },
+    { key: 'phone', header: 'Teléfono', hideOnMobile: true, cell: (s) => <span className="text-sm text-gray-500">{s.phone}</span> },
+    { key: 'email', header: 'Email', hideOnMobile: true, cell: (s) => <span className="text-sm text-gray-500">{s.email}</span> },
+    { key: 'categories', header: 'Rubros', hideOnMobile: true, cell: (s) => <span className="text-sm text-gray-500 max-w-[140px] truncate block">{s.categories}</span> },
+    {
+      key: 'active', header: 'Estado', cell: (s) => (
+        s.active
+          ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border">Activo</Badge>
+          : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border">Inactivo</Badge>
+      ),
+    },
+    {
+      key: 'actions', header: 'Acciones', align: 'right', stopClick: true, cell: (s) => (
+        <RowActions>
+          <RowAction onClick={() => openEdit(s)}>Editar</RowAction>
+          <RowDangerAction onClick={() => setDeleteId(s.id)}>Eliminar</RowDangerAction>
+        </RowActions>
+      ),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
@@ -74,51 +98,18 @@ export default function SuppliersPage() {
             </Button>
           </div>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-base">Lista de proveedores</CardTitle>
-              <CardDescription>{suppliers.length} proveedores registrados</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                    <TableHead className="pl-6 w-12">#</TableHead>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Rubros</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="pr-6 text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {suppliers.map(s => (
-                    <TableRow key={s.id} className="hover:bg-gray-50/50">
-                      <TableCell className="pl-6 text-gray-400 font-mono text-sm">{s.id}</TableCell>
-                      <TableCell className="font-medium text-sm">{s.name}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{s.contact}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{s.phone}</TableCell>
-                      <TableCell className="text-sm text-gray-500">{s.email}</TableCell>
-                      <TableCell className="text-sm text-gray-500 max-w-[140px] truncate">{s.categories}</TableCell>
-                      <TableCell>
-                        {s.active
-                          ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border">Activo</Badge>
-                          : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border">Inactivo</Badge>}
-                      </TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEdit(s)}>Editar</Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-200" onClick={() => setDeleteId(s.id)}>Eliminar</Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div className="space-y-2">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Lista de proveedores</h2>
+              <p className="text-sm text-gray-500">{suppliers.length} proveedores registrados</p>
+            </div>
+            <DataTable
+              data={suppliers}
+              getRowKey={(s) => s.id}
+              emptyMessage="No hay proveedores registrados"
+              columns={columns}
+            />
+          </div>
         </div>
       </main>
 
