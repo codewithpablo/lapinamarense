@@ -1,0 +1,4 @@
+* text=auto
+
+# Los scripts de shell SIEMPRE con finales de línea LF (Render/Linux los ejecuta).
+*.sh text eol=lf

@@ -16,16 +16,6 @@ import { ordersAPI } from '@/lib/api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
-function getMockData() {
-  const today = new Date();
-  const values = [4200, 7800, 5100, 9300, 6700, 11200, 8400];
-  return values.map((total, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
-    return { date: d.toISOString().split('T')[0], total };
-  });
-}
-
 function buildChartData(items: { date: string; total: number }[]) {
   return {
     labels: items.map(item =>
@@ -92,19 +82,15 @@ const options: ChartOptions<'line'> = {
 export default function SalesChart() {
   const [chartData, setChartData] = useState<any>(null);
   const [total, setTotal] = useState(0);
-  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     ordersAPI.getSalesData().then(res => {
-      const items = res.data?.length ? res.data : getMockData();
-      if (!res.data?.length) setIsMock(true);
+      const items = res.data || [];
       setTotal(items.reduce((acc: number, item: any) => acc + Number(item.total), 0));
       setChartData(buildChartData(items));
     }).catch(() => {
-      const items = getMockData();
-      setIsMock(true);
-      setTotal(items.reduce((acc, item) => acc + item.total, 0));
-      setChartData(buildChartData(items));
+      setTotal(0);
+      setChartData(buildChartData([]));
     });
   }, []);
 
@@ -121,7 +107,6 @@ export default function SalesChart() {
           </span>
           <span className="text-sm text-gray-400 mb-0.5">últimos 7 días</span>
         </div>
-        {isMock && <span className="text-xs text-gray-300 italic">datos de ejemplo</span>}
       </div>
       <div className="h-64">
         <Line data={chartData} options={options} />

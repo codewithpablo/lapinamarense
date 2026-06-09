@@ -36,17 +36,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
-const MOCK_ORDERS: Order[] = [
-  { id: 101, status: 'delivered',  total_amount: 4850, user: { username: 'sofia_m'     }, delivery_address: 'Av. Constitución 123', phone: '2254-401234', created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString()  },
-  { id: 100, status: 'preparing',  total_amount: 2340, user: { username: 'carlos_r'    }, delivery_address: 'Calle 3 N°456',        phone: '2254-402345', created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString()  },
-  { id: 99,  status: 'confirmed',  total_amount: 7120, user: { username: 'laura_v'     }, delivery_address: 'Mitre 789',            phone: '2254-403456', created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString() },
-  { id: 98,  status: 'pending',    total_amount: 1560, user: { username: 'diego_p'     }, delivery_address: 'San Martín 321',       phone: '2254-404567', created_at: new Date(Date.now() - 1000 * 60 * 300).toISOString() },
-  { id: 97,  status: 'delivered',  total_amount: 9200, user: { username: 'ana_flores'  }, delivery_address: 'Belgrano 654',         phone: '2254-405678', created_at: new Date(Date.now() - 1000 * 60 * 480).toISOString() },
-  { id: 96,  status: 'cancelled',  total_amount: 3400, user: { username: 'martin_g'    }, delivery_address: 'Rivadavia 987',        phone: '2254-406789', created_at: new Date(Date.now() - 1000 * 60 * 600).toISOString() },
-  { id: 95,  status: 'delivered',  total_amount: 6100, user: { username: 'pabloalonso' }, delivery_address: 'Libertad 111',         phone: '2254-407890', created_at: new Date(Date.now() - 1000 * 60 * 720).toISOString() },
-  { id: 94,  status: 'confirmed',  total_amount: 3850, user: { username: 'sofia_m'     }, delivery_address: 'Av. 9 de Julio 200',   phone: '2254-401234', created_at: new Date(Date.now() - 1000 * 60 * 900).toISOString() },
-];
-
 export default function SalesPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +48,9 @@ export default function SalesPage() {
   const fetchOrders = async () => {
     try {
       const response = await ordersAPI.getAll();
-      setOrders(response.data?.length ? response.data : MOCK_ORDERS);
+      setOrders(response.data || []);
     } catch {
-      setOrders(MOCK_ORDERS);
+      setOrders([]);
     } finally {
       setLoading(false);
     }

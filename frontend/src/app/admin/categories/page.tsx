@@ -14,14 +14,6 @@ import Loader from '@/components/ui/loader';
 
 interface Category { id: number; name: string; description: string; image_url?: string }
 const EMPTY_FORM = { name: '', description: '' };
-const MOCK: Category[] = [
-  { id: 1, name: 'Almacén',    description: 'Arroz, fideos, aceite y otros secos' },
-  { id: 2, name: 'Lácteos',    description: 'Leche, yogur, quesos y manteca' },
-  { id: 3, name: 'Infusiones', description: 'Yerba mate, té, café y cacao' },
-  { id: 4, name: 'Pastas',     description: 'Fideos, tapas y pastas frescas' },
-  { id: 5, name: 'Limpieza',   description: 'Detergentes, lavandina y limpieza' },
-  { id: 6, name: 'Bebidas',    description: 'Gaseosas, aguas, jugos y energizantes' },
-];
 
 export default function CategoriesPage() {
   const [categories, setCategories]   = useState<Category[]>([]);
@@ -32,18 +24,14 @@ export default function CategoriesPage() {
   const [form, setForm]               = useState(EMPTY_FORM);
   const [saving, setSaving]           = useState(false);
   const [deleting, setDeleting]       = useState(false);
-  const [isMock, setIsMock]           = useState(false);
 
   useEffect(() => { load(); }, []);
 
   const load = () => {
     setLoading(true);
     categoriesAPI.getAll()
-      .then(res => {
-        if (res.data?.length) { setCategories(res.data); setIsMock(false); }
-        else                  { setCategories(MOCK);     setIsMock(true);  }
-      })
-      .catch(() => { setCategories(MOCK); setIsMock(true); })
+      .then(res => setCategories(res.data || []))
+      .catch(() => setCategories([]))
       .finally(() => setLoading(false));
   };
 
@@ -54,18 +42,9 @@ export default function CategoriesPage() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      if (isMock) {
-        if (editing) {
-          setCategories(prev => prev.map(c => c.id === editing.id ? { ...c, ...form } : c));
-        } else {
-          const newId = Math.max(0, ...categories.map(c => c.id)) + 1;
-          setCategories(prev => [...prev, { id: newId, ...form }]);
-        }
-      } else {
-        if (editing) await categoriesAPI.update(editing.id, form);
-        else         await categoriesAPI.create(form);
-        load();
-      }
+      if (editing) await categoriesAPI.update(editing.id, form);
+      else         await categoriesAPI.create(form);
+      load();
       setModalOpen(false);
     } catch { console.error('Error al guardar la categoría'); }
     finally  { setSaving(false); }
@@ -75,8 +54,8 @@ export default function CategoriesPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      if (isMock) setCategories(prev => prev.filter(c => c.id !== deleteId));
-      else        { await categoriesAPI.delete(deleteId); load(); }
+      await categoriesAPI.delete(deleteId);
+      load();
       setDeleteId(null);
     } catch { console.error('Error al eliminar la categoría'); }
     finally  { setDeleting(false); }

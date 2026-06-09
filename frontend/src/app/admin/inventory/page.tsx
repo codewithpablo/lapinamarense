@@ -15,19 +15,6 @@ import Loader from '@/components/ui/loader';
 
 interface Product { id: number; name: string; stock: number; price: number; category_name?: string; category?: { name: string } }
 
-const MOCK_PRODUCTS: Product[] = [
-  { id: 1,  name: 'Yerba Mate 1kg',        price: 2800, stock: 45, category_name: 'Infusiones' },
-  { id: 2,  name: 'Arroz Largo Fino 1kg',  price: 1200, stock: 3,  category_name: 'Almacén'    },
-  { id: 3,  name: 'Aceite de Girasol 1L',  price: 1850, stock: 28, category_name: 'Almacén'    },
-  { id: 4,  name: 'Azúcar 1kg',            price: 950,  stock: 7,  category_name: 'Almacén'    },
-  { id: 5,  name: 'Fideos Spaghetti 500g', price: 780,  stock: 60, category_name: 'Pastas'     },
-  { id: 6,  name: 'Leche Entera 1L',       price: 1100, stock: 5,  category_name: 'Lácteos'    },
-  { id: 7,  name: 'Harina 000 1kg',        price: 850,  stock: 32, category_name: 'Almacén'    },
-  { id: 8,  name: 'Café Molido 250g',      price: 2100, stock: 4,  category_name: 'Infusiones' },
-  { id: 9,  name: 'Jabón en Polvo 1kg',    price: 3200, stock: 18, category_name: 'Limpieza'   },
-  { id: 10, name: 'Sal Fina 1kg',          price: 450,  stock: 0,  category_name: 'Almacén'    },
-];
-
 function StockBadge({ stock }: { stock: number }) {
   if (stock === 0) return <Badge className="bg-red-100    text-red-700    border-red-200    text-xs border">Sin stock</Badge>;
   if (stock < 10)  return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs border">{stock} — bajo</Badge>;
@@ -37,7 +24,6 @@ function StockBadge({ stock }: { stock: number }) {
 export default function InventoryPage() {
   const [products, setProducts]   = useState<Product[]>([]);
   const [loading, setLoading]     = useState(true);
-  const [isMock, setIsMock]       = useState(false);
   const [adjusting, setAdjusting] = useState<Product | null>(null);
   const [newStock, setNewStock]   = useState('');
   const [saving, setSaving]       = useState(false);
@@ -47,11 +33,8 @@ export default function InventoryPage() {
   const load = () => {
     setLoading(true);
     productsAPI.getAll()
-      .then(res => {
-        if (res.data?.length) { setProducts(res.data); setIsMock(false); }
-        else                  { setProducts(MOCK_PRODUCTS); setIsMock(true); }
-      })
-      .catch(() => { setProducts(MOCK_PRODUCTS); setIsMock(true); })
+      .then(res => setProducts(res.data || []))
+      .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   };
 
@@ -63,12 +46,8 @@ export default function InventoryPage() {
     if (isNaN(val) || val < 0) return;
     setSaving(true);
     try {
-      if (isMock) {
-        setProducts(prev => prev.map(p => p.id === adjusting.id ? { ...p, stock: val } : p));
-      } else {
-        await productsAPI.patch(adjusting.id, { stock: val });
-        load();
-      }
+      await productsAPI.patch(adjusting.id, { stock: val });
+      load();
       setAdjusting(null);
     } catch { console.error('Error al ajustar el stock'); }
     finally  { setSaving(false); }

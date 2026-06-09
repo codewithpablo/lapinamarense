@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { productsAPI, ordersAPI } from '@/lib/api';
 import Sidebar from '@/components/admin/Sidebar';
 import { Button } from '@/components/ui/button';
@@ -13,14 +12,12 @@ import {
   CheckCircle2, Loader2, Package, User, X,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Product  { id: number; name: string; price: number; stock: number; category_name?: string; image?: string }
 interface LineItem  { product: Product; quantity: number }
 interface Customer { id: number; username: string; first_name: string; last_name: string }
 
 export default function PosPage() {
-  const { user, isLoading } = useAuth();
   const [products, setProducts]   = useState<Product[]>([]);
   const [filtered, setFiltered]   = useState<Product[]>([]);
   const [search, setSearch]       = useState('');
@@ -34,18 +31,12 @@ export default function PosPage() {
   const [error, setError]         = useState('');
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
 
-  const router = useRouter();
-
+  // El layout guard ya garantiza un usuario staff.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isLoading && (!user || !user.is_store_owner)) {
-      router.replace('/auth');
-      return;
-    }
-    if (user?.is_store_owner) {
-      productsAPI.getAll().then(res => { setProducts(res.data); setFiltered(res.data); }).catch(() => {});
-      api.get('/auth/users/').then(res => setCustomers(res.data)).catch(() => {});
-    }
-  }, [user, isLoading]);
+    productsAPI.getAll().then(res => { setProducts(res.data); setFiltered(res.data); }).catch(() => {});
+    api.get('/auth/users/').then(res => setCustomers(res.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const q = search.toLowerCase();

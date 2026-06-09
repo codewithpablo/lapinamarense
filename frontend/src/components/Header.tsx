@@ -51,7 +51,7 @@ export default function Header() {
                     <User className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Link href="/register">
+                <Link href="/auth?tab=register">
                   <Button>Registrarse</Button>
                 </Link>
               </>

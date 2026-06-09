@@ -29,5 +29,8 @@ db.sqlite3
 # Media uploads
 backend/media/
 
+# Static (Render lo regenera en cada build)
+backend/staticfiles/
+
 # Claude
 .claude/

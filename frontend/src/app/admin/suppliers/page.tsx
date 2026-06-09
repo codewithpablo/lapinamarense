@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,21 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
+import { suppliersAPI } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
 
 interface Supplier { id: number; name: string; contact: string; phone: string; email: string; categories: string; active: boolean }
 const EMPTY_FORM = { name: '', contact: '', phone: '', email: '', categories: '', active: 'true' };
 
-const INITIAL: Supplier[] = [
-  { id: 1, name: 'Distribuidora Norte',   contact: 'Juan Pérez',       phone: '2254-410001', email: 'juan@dnorte.com',          categories: 'Almacén, Pastas',  active: true  },
-  { id: 2, name: 'Lácteos del Sur S.A.',  contact: 'María González',   phone: '2254-420002', email: 'mgonzalez@ldelsur.com',    categories: 'Lácteos',          active: true  },
-  { id: 3, name: 'Yerba & Café S.R.L.',   contact: 'Carlos Rodríguez', phone: '2254-430003', email: 'info@yerbacafe.com',       categories: 'Infusiones',       active: true  },
-  { id: 4, name: 'Limpieza Total',        contact: 'Ana Torres',       phone: '2254-440004', email: 'atorres@limpiezatotal.com',categories: 'Limpieza',         active: false },
-  { id: 5, name: 'Bebidas Pinamar',       contact: 'Luis Martínez',    phone: '2254-450005', email: 'luism@bebidaspm.com',      categories: 'Bebidas',          active: true  },
-];
-
 export default function SuppliersPage() {
-  const [suppliers, setSuppliers]   = useState<Supplier[]>(INITIAL);
+  const [suppliers, setSuppliers]   = useState<Supplier[]>([]);
   const [modalOpen, setModalOpen]   = useState(false);
   const [deleteId, setDeleteId]     = useState<number | null>(null);
   const [editing, setEditing]       = useState<Supplier | null>(null);
@@ -32,6 +25,11 @@ export default function SuppliersPage() {
   const [saving, setSaving]         = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const load = () => {
+    suppliersAPI.getAll().then(r => setSuppliers(r.data || [])).catch(() => setSuppliers([]));
+  };
+  useEffect(() => { load(); }, []);
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); };
   const openEdit = (s: Supplier) => {
@@ -43,20 +41,21 @@ export default function SuppliersPage() {
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 300));
-    if (editing) {
-      setSuppliers(prev => prev.map(s => s.id === editing.id ? { ...s, ...form, active: form.active === 'true' } : s));
-    } else {
-      const newId = Math.max(0, ...suppliers.map(s => s.id)) + 1;
-      setSuppliers(prev => [...prev, { id: newId, ...form, active: form.active === 'true' }]);
-    }
-    setModalOpen(false);
-    setSaving(false);
+    const payload = { name: form.name, contact: form.contact, phone: form.phone, email: form.email, categories: form.categories, active: form.active === 'true' };
+    try {
+      if (editing) await suppliersAPI.update(editing.id, payload);
+      else         await suppliersAPI.create(payload);
+      load();
+      setModalOpen(false);
+    } catch { console.error('Error al guardar el proveedor'); }
+    finally { setSaving(false); }
   };
 
-  const handleDelete = () => {
-    setSuppliers(prev => prev.filter(s => s.id !== deleteId));
-    setDeleteId(null);
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try { await suppliersAPI.delete(deleteId); load(); }
+    catch { console.error('Error al eliminar el proveedor'); }
+    finally { setDeleteId(null); }
   };
 
   return (

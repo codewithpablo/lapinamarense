@@ -87,6 +87,9 @@ export default function ProductsPage() {
   const [addingId, setAddingId]                 = useState<number | null>(null);
   const [addedId, setAddedId]                   = useState<number | null>(null);
   const [flyout, setFlyout]                     = useState<Flyout | null>(null);
+  const [rightCollapsed, setRightCollapsed]     = useState(false);
+  const [catDrawerOpen, setCatDrawerOpen]       = useState(false);
+  const [expandedCat, setExpandedCat]           = useState<number | null>(null);
   const asideRef    = useRef<HTMLElement>(null);
   const flyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
@@ -224,28 +227,41 @@ export default function ProductsPage() {
   const ProductGrid = ({ items }: { items: Product[] }) =>
     items.length === 0
       ? <div className="flex flex-col items-center py-24 text-gray-400"><Package className="h-10 w-10 mb-3 text-gray-300" /><p className="text-sm">No se encontraron productos</p></div>
-      : <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">{items.map(p => <ProductCard key={p.id} product={p} />)}</div>;
+      : <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4">{items.map(p => <ProductCard key={p.id} product={p} />)}</div>;
+
+  const visibleCats = categories.filter(cat => cat.name !== 'Combos');
 
   return (
     <div className="min-h-screen bg-gray-50 flex overflow-x-hidden">
-      <CustomerSidebar />
+      <CustomerSidebar
+        title="Tienda"
+        rightSlot={activeTab === 'productos' ? (
+          <button
+            onClick={() => setCatDrawerOpen(true)}
+            className="w-9 h-9 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center shadow-sm"
+            aria-label="Filtrar por categoría"
+          >
+            <Layers className="h-5 w-5 text-white" />
+          </button>
+        ) : undefined}
+      />
 
       <div className="flex-1 flex min-w-0">
 
         {/* ── Content ── */}
-        <div className="flex-1 min-w-0 p-4 lg:p-8">
+        <div className="flex-1 min-w-0 p-4 lg:p-8 pt-[4.5rem] lg:pt-8">
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-5 bg-white rounded-xl p-1 shadow-sm w-fit">
+          <div className="flex gap-1 mb-5 bg-white rounded-xl p-1 shadow-sm w-full sm:w-fit">
             {([
-              { id: 'productos', label: 'Productos', icon: null },
+              { id: 'productos', label: 'Productos', icon: Package },
               { id: 'combos',    label: 'Combos',    icon: Gift },
               { id: 'ofertas',   label: 'Ofertas',   icon: Tag  },
             ] as const).map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.id ? 'bg-green-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
@@ -283,29 +299,36 @@ export default function ProductsPage() {
         </div>
 
         {/* Spacer + sidebar fijo solo en tab productos */}
-        <div className={`${activeTab === 'productos' ? 'w-56' : 'w-0'} shrink-0 transition-all`} />
+        <div className={`${activeTab === 'productos' ? (rightCollapsed ? 'w-0' : 'w-56') : 'w-0'} shrink-0 transition-all duration-300 hidden lg:block`} />
 
         {activeTab === 'productos' && (
           <aside
             ref={asideRef}
-            className="fixed right-0 top-0 h-screen w-56 bg-white border-l border-gray-200 flex flex-col z-20"
+            className={`fixed right-0 top-0 h-screen bg-white border-l border-gray-200 flex flex-col z-20 transition-all duration-300 hidden lg:flex ${rightCollapsed ? 'w-14' : 'w-56'}`}
           >
-            {/* Scrollable nav — overflow-y-auto aquí, scrollbar de globals.css */}
-            <div className="flex-1 overflow-y-auto no-scrollbar px-3 pt-10 pb-6 space-y-0.5">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-3">
-                Categorías
-              </p>
+            {/* Boton colapsar */}
+            <div className="flex items-center justify-between px-3 pt-4 pb-2">
+              {!rightCollapsed && <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Categorias</p>}
+              <button
+                onClick={() => setRightCollapsed(v => !v)}
+                className="p-1 rounded-md hover:bg-gray-100 ml-auto"
+              >
+                <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${rightCollapsed ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
 
+            {/* Scrollable nav */}
+            <div className="flex-1 overflow-y-auto no-scrollbar px-3 pb-6 space-y-0.5">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   selectedCategory === null
                     ? 'bg-green-700 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-green-50 hover:text-green-700'
-                }`}
+                } ${rightCollapsed ? 'justify-center' : ''}`}
               >
                 <Package className="h-4 w-4 shrink-0" />
-                Todos
+                {!rightCollapsed && 'Todos'}
               </button>
 
               {categories.filter(cat => cat.name !== 'Combos').map(cat => {
@@ -322,11 +345,11 @@ export default function ProductsPage() {
                         selectedCategory === cat.id
                           ? 'bg-green-700 text-white shadow-sm'
                           : 'text-gray-600 hover:bg-green-50 hover:text-green-700'
-                      }`}
+                      } ${rightCollapsed ? 'justify-center' : ''}`}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
-                      <span className="flex-1 text-left">{cat.name}</span>
-                      {cat.children?.length > 0 && (
+                      {!rightCollapsed && <span className="flex-1 text-left">{cat.name}</span>}
+                      {!rightCollapsed && cat.children?.length > 0 && (
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-40" />
                       )}
                     </button>
@@ -363,6 +386,90 @@ export default function ProductsPage() {
               </div>
             )}
           </aside>
+        )}
+
+        {/* ── Drawer de Categorías (solo mobile) ── */}
+        {activeTab === 'productos' && (
+          <>
+            {catDrawerOpen && (
+              <div onClick={() => setCatDrawerOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 z-40" />
+            )}
+            <aside className={`lg:hidden fixed right-0 top-0 h-screen w-72 max-w-[85vw] z-50 bg-white border-l border-gray-100 flex flex-col transition-transform duration-300 ${catDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+              {/* Header del drawer */}
+              <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-gray-100">
+                <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-green-600" /> Categorías
+                </span>
+                <button
+                  onClick={() => setCatDrawerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center"
+                  aria-label="Cerrar categorías"
+                >
+                  <ChevronRight className="h-4 w-4 text-white" />
+                </button>
+              </div>
+
+              {/* Lista de categorías con subcategorías inline (touch-friendly) */}
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+                <button
+                  onClick={() => { setSelectedCategory(null); setCatDrawerOpen(false); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    selectedCategory === null ? 'bg-green-700 text-white shadow-sm' : 'text-gray-600 hover:bg-green-50 hover:text-green-700'
+                  }`}
+                >
+                  <Package className="h-4 w-4 shrink-0" /> Todos
+                </button>
+
+                {visibleCats.map(cat => {
+                  const Icon = CATEGORY_ICONS[cat.name] ?? Package;
+                  const hasChildren = cat.children?.length > 0;
+                  const isExpanded = expandedCat === cat.id;
+                  return (
+                    <div key={cat.id}>
+                      <button
+                        onClick={() => {
+                          if (hasChildren) {
+                            setExpandedCat(isExpanded ? null : cat.id);
+                          } else {
+                            setSelectedCategory(cat.id); setCatDrawerOpen(false);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                          selectedCategory === cat.id ? 'bg-green-700 text-white shadow-sm' : 'text-gray-600 hover:bg-green-50 hover:text-green-700'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="flex-1 text-left">{cat.name}</span>
+                        {hasChildren && (
+                          <ChevronRight className={`h-3.5 w-3.5 shrink-0 opacity-50 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        )}
+                      </button>
+                      {/* Subcategorías */}
+                      {hasChildren && isExpanded && (
+                        <div className="ml-5 mt-0.5 mb-1 space-y-0.5 border-l border-gray-100 pl-2">
+                          {cat.children.map(child => {
+                            const ChildIcon = CATEGORY_ICONS[child.name] ?? Package;
+                            return (
+                              <button
+                                key={child.id}
+                                onClick={() => { setSelectedCategory(child.id); setCatDrawerOpen(false); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                                  selectedCategory === child.id ? 'bg-green-50 text-green-700' : 'text-gray-500 hover:bg-green-50 hover:text-green-700'
+                                }`}
+                              >
+                                <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                                {child.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </aside>
+          </>
         )}
       </div>
     </div>

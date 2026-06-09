@@ -28,11 +28,10 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    if (!user) { router.push('/auth?redirect=/checkout'); return; }
     setFormData(f => ({
       ...f,
-      delivery_address: user.address || '',
-      phone: user.phone || '',
+      delivery_address: user?.address || '',
+      phone: user?.phone || '',
     }));
     fetchCart();
   }, [user]);
@@ -69,7 +68,7 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gray-50 flex">
       <CustomerSidebar />
 
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-4 lg:p-8 pt-[4.5rem] lg:pt-8">
         <div className="max-w-4xl mx-auto">
 
           {/* Header */}

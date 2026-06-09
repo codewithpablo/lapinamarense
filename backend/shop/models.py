@@ -16,6 +16,8 @@ class User(AbstractUser):
     role           = models.CharField(max_length=20, choices=ROLE_CHOICES, default='cliente')
     is_store_owner = models.BooleanField(default=False)
     avatar         = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    email          = models.EmailField(unique=True)
+    google_sub     = models.CharField(max_length=255, unique=True, null=True, blank=True)
 
     class Meta:
         swappable = 'AUTH_USER_MODEL'
@@ -199,3 +201,34 @@ class PaymentCard(models.Model):
         if self.is_default:
             PaymentCard.objects.filter(user=self.user, is_default=True).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+
+class Employee(models.Model):
+    name       = models.CharField(max_length=120)
+    role       = models.CharField(max_length=50)
+    phone      = models.CharField(max_length=30, blank=True)
+    shift      = models.CharField(max_length=20, default='Mañana')
+    active     = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return self.name
+
+
+class Supplier(models.Model):
+    name       = models.CharField(max_length=150)
+    contact    = models.CharField(max_length=120, blank=True)
+    phone      = models.CharField(max_length=30, blank=True)
+    email      = models.EmailField(blank=True)
+    categories = models.CharField(max_length=200, blank=True)
+    active     = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return self.name

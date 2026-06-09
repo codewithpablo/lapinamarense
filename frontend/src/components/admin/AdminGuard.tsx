@@ -12,7 +12,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (isLoading) return;
     if (!user) { router.replace('/auth'); return; }
-    if (!isStaff(user.role)) router.replace('/cuenta');
+    if (!isStaff(user.role)) router.replace('/dashboard');
   }, [user, isLoading, router]);
 
   if (isLoading || !user || !isStaff(user.role)) return null;

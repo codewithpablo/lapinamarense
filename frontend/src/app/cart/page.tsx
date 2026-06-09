@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cartAPI } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Trash2, ShoppingBag, Loader2, ArrowRight, Package } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Package, ChevronRight, Receipt } from 'lucide-react';
 import Loader from '@/components/ui/loader';
 
 interface CartItem {
@@ -25,13 +25,12 @@ interface Cart {
 export default function CartPage() {
   const [cart, setCart]     = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!user) { router.push('/auth'); return; }
-    fetchCart();
-  }, [user]);
+  // El layout guard ya garantiza un cliente autenticado.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchCart(); }, []);
 
   const fetchCart = async () => {
     try {
@@ -57,19 +56,25 @@ export default function CartPage() {
     fetchCart();
   };
 
+  const hasItems = !!cart && cart.items.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <CustomerSidebar />
+      <CustomerSidebar
+        title="Mi carrito"
+        rightSlot={hasItems ? (
+          <button
+            onClick={() => setSummaryOpen(true)}
+            className="w-9 h-9 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center shadow-sm"
+            aria-label="Ver resumen del pedido"
+          >
+            <Receipt className="h-5 w-5 text-white" />
+          </button>
+        ) : undefined}
+      />
 
-      <main className="flex-1 p-4 lg:p-8">
+      <main className="flex-1 p-4 lg:p-8 pt-[4.5rem] lg:pt-8 pb-24 lg:pb-8">
         <div className="max-w-5xl mx-auto">
-
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Carrito de Compras</h1>
-            {!loading && cart && (
-              <p className="text-sm text-gray-500 mt-1">{cart.items.length} {cart.items.length === 1 ? 'producto' : 'productos'}</p>
-            )}
-          </div>
 
           {loading ? (
             <Loader />
@@ -150,14 +155,14 @@ export default function CartPage() {
 
                 <button
                   onClick={clearCart}
-                  className="text-xs text-gray-400 hover:text-red-500 transition-colors mt-1"
+                  className="hidden lg:inline-block text-xs text-gray-400 hover:text-red-500 transition-colors mt-1"
                 >
                   Vaciar carrito
                 </button>
               </div>
 
-              {/* Summary */}
-              <div>
+              {/* Summary — columna a la derecha SOLO en desktop */}
+              <div className="hidden lg:block">
                 <Card className="border-0 shadow-sm bg-white sticky top-8">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Resumen del pedido</CardTitle>
@@ -189,6 +194,68 @@ export default function CartPage() {
           )}
         </div>
       </main>
+
+      {/* ── Botón "Vaciar carrito" fijo en el footer (solo mobile) ── */}
+      {hasItems && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 p-3 bg-white/80 backdrop-blur-md border-t border-gray-200/70">
+          <Button
+            onClick={clearCart}
+            className="w-full bg-red-600 hover:bg-red-700 text-white h-11 font-semibold"
+          >
+            <Trash2 className="mr-2 h-4 w-4" /> Vaciar carrito
+          </Button>
+        </div>
+      )}
+
+      {/* ── Resumen del pedido como SIDEBAR DERECHO en mobile (drawer) ── */}
+      {hasItems && (
+        <>
+          {/* Overlay */}
+          {summaryOpen && (
+            <div onClick={() => setSummaryOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 z-40" />
+          )}
+          {/* Drawer */}
+          <aside className={cn(
+            'lg:hidden fixed right-0 top-0 h-screen w-72 max-w-[85vw] z-50 bg-white border-l border-gray-100 flex flex-col transition-transform duration-300',
+            summaryOpen ? 'translate-x-0' : 'translate-x-full',
+          )}>
+            {/* Header del drawer */}
+            <div className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-gray-100">
+              <span className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-green-600" /> Resumen del pedido
+              </span>
+              <button
+                onClick={() => setSummaryOpen(false)}
+                className="w-8 h-8 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center"
+                aria-label="Cerrar resumen"
+              >
+                <ChevronRight className="h-4 w-4 text-white" />
+              </button>
+            </div>
+            {/* Contenido */}
+            <div className="p-5 space-y-3">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Subtotal</span>
+                <span>${Number(cart!.total_price).toLocaleString('es-AR')}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Envío</span>
+                <span className="text-green-600 font-medium">Gratis</span>
+              </div>
+              <div className="border-t pt-3 flex justify-between font-bold text-gray-900">
+                <span>Total</span>
+                <span>${Number(cart!.total_price).toLocaleString('es-AR')}</span>
+              </div>
+              <Button
+                className="w-full bg-green-800 hover:bg-green-700 text-white h-10 font-medium mt-1"
+                onClick={() => router.push('/checkout')}
+              >
+                Confirmar pedido <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

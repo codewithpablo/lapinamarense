@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+// En producción (Vercel) se setea NEXT_PUBLIC_API_URL con la URL del backend en Render.
+// En desarrollo cae al backend local.
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -35,10 +37,13 @@ api.interceptors.response.use(
         } catch (err) {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          localStorage.removeItem('user_data');
+          window.location.href = '/auth';
         }
       } else {
-        window.location.href = '/login';
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_data');
+        window.location.href = '/auth';
       }
     }
     return Promise.reject(error);
@@ -50,6 +55,8 @@ export const authAPI = {
     api.post('/auth/login/', { username, password }),
   register: (data: any) =>
     api.post('/auth/register/', data),
+  google: (accessToken: string) =>
+    api.post('/auth/google/', { access_token: accessToken }),
 };
 
 export const productsAPI = {
@@ -127,6 +134,20 @@ export const profileAPI = {
 export const rolesAPI = {
   getUsers: ()                           => api.get('/auth/roles/'),
   updateRole: (id: number, role: string) => api.patch(`/auth/roles/${id}/`, { role }),
+};
+
+export const employeesAPI = {
+  getAll: ()                      => api.get('/employees/'),
+  create: (data: any)             => api.post('/employees/', data),
+  update: (id: number, data: any) => api.patch(`/employees/${id}/`, data),
+  delete: (id: number)            => api.delete(`/employees/${id}/`),
+};
+
+export const suppliersAPI = {
+  getAll: ()                      => api.get('/suppliers/'),
+  create: (data: any)             => api.post('/suppliers/', data),
+  update: (id: number, data: any) => api.patch(`/suppliers/${id}/`, data),
+  delete: (id: number)            => api.delete(`/suppliers/${id}/`),
 };
 
 export default api;

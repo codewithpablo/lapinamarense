@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: lapinamarense-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn lapinamarense.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: SECRET_KEY
+        generateValue: true       # Render genera una clave segura
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lapinamarense-db
+          property: connectionString
+      - key: GOOGLE_CLIENT_ID
+        sync: false               # la cargás a mano en el dashboard
+      - key: FRONTEND_URL
+        sync: false               # la URL de Vercel, la cargás a mano
+
+databases:
+  - name: lapinamarense-db
+    plan: free

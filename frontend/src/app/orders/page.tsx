@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ordersAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStaff } from '@/lib/roles';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Package, ArrowRight, MapPin, Phone, FileText, ShoppingBag, ChevronDown, Check } from 'lucide-react';
+import { Loader2, ArrowRight, ShoppingBag, ChevronDown, Check } from 'lucide-react';
 import Loader from '@/components/ui/loader';
 
 interface OrderItem {
@@ -83,6 +84,22 @@ function StatusChanger({ order, onUpdate }: { order: Order; onUpdate: (id: numbe
   );
 }
 
+function TicketPine() {
+  return (
+    <svg width="34" height="42" viewBox="0 0 72 90" fill="none" aria-hidden="true">
+      <rect x="33" y="68" width="6" height="16" rx="1.5" className="fill-amber-700" />
+      <path d="M36 62 L12 62 Q16 56 22 54 L18 54 Q22 48 28 46" className="stroke-green-900 fill-green-800/90" />
+      <path d="M36 62 L60 62 Q56 56 50 54 L54 54 Q50 48 44 46" className="stroke-green-900 fill-green-800/90" />
+      <path d="M36 46 L16 50 Q20 44 24 42 L20 42 Q24 36 30 34" className="stroke-green-800 fill-green-700/90" />
+      <path d="M36 46 L56 50 Q52 44 48 42 L52 42 Q48 36 42 34" className="stroke-green-800 fill-green-700/90" />
+      <path d="M36 34 L22 38 Q26 32 30 30 L26 30 Q30 24 34 22" className="stroke-green-700 fill-green-600/90" />
+      <path d="M36 34 L50 38 Q46 32 42 30 L46 30 Q42 24 38 22" className="stroke-green-700 fill-green-600/90" />
+      <path d="M36 8 L28 22 Q32 18 36 20 Q40 18 44 22 Z" className="fill-green-600" />
+      <line x1="36" y1="8" x2="36" y2="68" className="stroke-[2.5] stroke-amber-700" />
+    </svg>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -91,7 +108,6 @@ export default function OrdersPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) { router.push('/auth'); return; }
     ordersAPI.getAll()
       .then(res => setOrders(res.data))
       .catch(() => {})
@@ -107,10 +123,10 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-gray-50 flex">
       <CustomerSidebar />
 
-      <main className="flex-1 p-4 lg:p-6">
+      <main className="flex-1 p-4 lg:p-6 pt-[4.5rem] lg:pt-6">
         <div className="max-w-5xl mx-auto">
 
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold text-gray-900">Mis Pedidos</h1>
               {!loading && (
@@ -135,7 +151,9 @@ export default function OrdersPage() {
             </div>
 
           ) : (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <>
+            {/* ── Tabla completa (desktop) ── */}
+            <div className="hidden lg:block bg-white rounded-xl shadow-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
@@ -163,7 +181,7 @@ export default function OrdersPage() {
                         <p className="text-[10px] text-gray-400">{order.items.length} {order.items.length === 1 ? 'producto' : 'productos'}</p>
                       </TableCell>
                       <TableCell className="py-2.5">
-                        {user?.is_store_owner
+                        {isStaff(user?.role)
                           ? <StatusChanger order={order} onUpdate={handleStatusUpdate} />
                           : <StatusBadge status={order.status} />
                         }
@@ -184,81 +202,155 @@ export default function OrdersPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* ── Tabla compacta (mobile): Fecha · # · Estado · Total ── */}
+            <div className="lg:hidden bg-white rounded-xl shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 border-b border-gray-100">
+                    <TableHead className="pl-3 py-2.5 text-[11px] font-semibold text-gray-500">Fecha</TableHead>
+                    <TableHead className="py-2.5 w-10 text-[11px] font-semibold text-gray-500">#</TableHead>
+                    <TableHead className="py-2.5 text-[11px] font-semibold text-gray-500">Estado</TableHead>
+                    <TableHead className="py-2.5 text-right text-[11px] font-semibold text-gray-500">Total</TableHead>
+                    <TableHead className="pr-3 py-2.5 w-8 text-[11px] font-semibold text-gray-500"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map(order => (
+                    <TableRow
+                      key={order.id}
+                      className="hover:bg-gray-50/60 border-b border-gray-50 last:border-0 cursor-pointer"
+                      onClick={() => setSelected(order)}
+                    >
+                      <TableCell className="pl-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
+                        {new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                      </TableCell>
+                      <TableCell className="py-3 font-mono text-[11px] font-semibold text-gray-400">
+                        {order.id}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {isStaff(user?.role)
+                          ? <div onClick={e => e.stopPropagation()}><StatusChanger order={order} onUpdate={handleStatusUpdate} /></div>
+                          : <StatusBadge status={order.status} />
+                        }
+                      </TableCell>
+                      <TableCell className="py-3 text-right font-semibold text-[11px] text-gray-900 whitespace-nowrap">
+                        ${Number(order.total_amount).toLocaleString('es-AR')}
+                      </TableCell>
+                      <TableCell className="pr-3 py-3 text-right">
+                        <ArrowRight className="h-4 w-4 text-gray-300 inline-block" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            </>
           )}
         </div>
       </main>
 
       {/* Detail modal */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Pedido #{selected?.id}</span>
-              {selected && <StatusBadge status={selected.status} />}
-            </DialogTitle>
-            {selected && (
-              <p className="text-xs text-gray-400 font-normal mt-0.5">
-                {new Date(selected.created_at).toLocaleDateString('es-AR', { dateStyle: 'long' })} · {new Date(selected.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
-          </DialogHeader>
-
+        <DialogContent className="max-w-[420px] p-0 gap-0 border-0 bg-transparent shadow-none [&>button]:top-2 [&>button]:right-2 [&>button]:text-gray-400">
           {selected && (
-            <div className="space-y-5 pt-1">
+            <div className="bg-white text-gray-800 font-mono flex flex-col max-h-[88vh]" style={{ filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.22))' }}>
+              <DialogTitle className="sr-only">Comprobante del pedido #{selected.id}</DialogTitle>
 
-              {/* Items */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Productos</p>
+              <div className="px-6 pt-5 pb-4 overflow-y-auto min-h-0">
+                {/* Logo */}
+                <div className="flex flex-col items-center text-center gap-0.5">
+                  <TicketPine />
+                  <p className="text-xl font-bold tracking-[0.18em] text-green-900 mt-1.5">LA PINAMARENSE</p>
+                  <p className="text-[11px] text-gray-500 uppercase tracking-[0.15em]">Fiambres · Picadas · Combos</p>
+                </div>
+                <div className="text-center text-[11px] text-gray-500 leading-relaxed mt-2.5">
+                  <p>Resistencia · B° España, Mz 79, Local 8</p>
+                  <p>Fontana · Av. Alvear 3500</p>
+                  <p>WhatsApp 3624-219435</p>
+                </div>
+
+                <div className="border-t border-dashed border-gray-300 my-3" />
+
+                {/* Datos del comprobante */}
+                <div className="text-[13px] space-y-1">
+                  <div className="flex justify-between"><span className="text-gray-500">Comprobante</span><span className="font-bold">N° {String(selected.id).padStart(6, '0')}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Fecha</span><span>{new Date(selected.created_at).toLocaleDateString('es-AR')}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Hora</span><span>{new Date(selected.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Estado</span><span className="uppercase font-semibold">{STATUS[selected.status]?.label ?? selected.status}</span></div>
+                  {user && (
+                    <div className="flex justify-between"><span className="text-gray-500">Cliente</span><span className="truncate ml-2 max-w-[55%] text-right">{`${user.first_name} ${user.last_name}`.trim() || user.username}</span></div>
+                  )}
+                </div>
+
+                <div className="border-t border-dashed border-gray-300 my-3" />
+
+                {/* Items */}
+                <div className="flex text-[11px] text-gray-400 uppercase tracking-wider mb-1.5">
+                  <span className="flex-1">Descripción</span>
+                  <span className="w-24 text-right">Importe</span>
+                </div>
                 <div className="space-y-2">
                   {selected.items.map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {item.product.image_url
-                          ? <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
-                          : <Package className="h-4 w-4 text-gray-300" />
-                        }
+                    <div key={i} className="text-[13px]">
+                      <p className="line-clamp-1 text-gray-800">{item.product.name}</p>
+                      <div className="flex text-gray-500">
+                        <span className="flex-1">{item.quantity} x ${Number(item.price).toLocaleString('es-AR')}</span>
+                        <span className="w-24 text-right text-gray-800 font-medium">${Number(item.subtotal).toLocaleString('es-AR')}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 line-clamp-1">{item.product.name}</p>
-                        <p className="text-xs text-gray-400">${Number(item.price).toLocaleString('es-AR')} c/u · x{item.quantity}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                        ${Number(item.subtotal).toLocaleString('es-AR')}
-                      </p>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Total */}
-              <div className="flex justify-between items-center border-t pt-3">
-                <span className="text-sm text-gray-500">Envío</span>
-                <span className="text-sm text-green-600 font-medium">Gratis</span>
-              </div>
-              <div className="flex justify-between items-center -mt-2">
-                <span className="font-semibold text-gray-900">Total</span>
-                <span className="font-bold text-lg text-gray-900">${Number(selected.total_amount).toLocaleString('es-AR')}</span>
-              </div>
+                <div className="border-t border-dashed border-gray-300 my-3" />
 
-              {/* Delivery info */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Entrega</p>
-                <div className="flex items-start gap-2 text-sm text-gray-700">
-                  <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <span>{selected.delivery_address}</span>
+                {/* Totales */}
+                <div className="text-[13px] space-y-1">
+                  <div className="flex justify-between text-gray-500"><span>Artículos</span><span>{selected.items.reduce((n, it) => n + it.quantity, 0)}</span></div>
+                  <div className="flex justify-between text-gray-500"><span>Envío</span><span>GRATIS</span></div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  <span>{selected.phone}</span>
+                <div className="flex justify-between items-baseline mt-2.5 pt-2.5 border-t-2 border-double border-gray-400">
+                  <span className="text-lg font-bold">TOTAL</span>
+                  <span className="text-xl font-extrabold">${Number(selected.total_amount).toLocaleString('es-AR')}</span>
                 </div>
-                {selected.notes && (
-                  <div className="flex items-start gap-2 text-sm text-gray-700">
-                    <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <span>{selected.notes}</span>
+
+                <div className="border-t border-dashed border-gray-300 my-3" />
+
+                {/* Entrega */}
+                <div className="text-[12px] text-gray-600 space-y-1">
+                  <p className="break-words"><span className="text-gray-400">▸ Entrega: </span>{selected.delivery_address}</p>
+                  <p><span className="text-gray-400">▸ Tel: </span>{selected.phone}</p>
+                  {selected.notes && <p className="break-words"><span className="text-gray-400">▸ Nota: </span>{selected.notes}</p>}
+                </div>
+
+                <div className="border-t border-dashed border-gray-300 my-3" />
+
+                {/* Pie */}
+                <p className="text-center text-[13px] font-semibold text-gray-700">¡Gracias por tu compra!</p>
+                <p className="text-center text-[11px] text-gray-400 mt-1">@lapinamarense · Comprobante no válido como factura</p>
+
+                {/* Código de barras */}
+                <div className="mt-3 flex flex-col items-center">
+                  <div className="flex items-end gap-[1px] h-9">
+                    {Array.from({ length: 50 }, (_, i) => {
+                      const w = ((selected.id * 7 + i * 31) % 3) + 1;
+                      return <div key={i} className="bg-gray-900 h-full" style={{ width: `${w}px` }} />;
+                    })}
                   </div>
-                )}
+                  <p className="text-[11px] tracking-[0.35em] text-gray-500 mt-1.5">{`7790${String(selected.id).padStart(8, '0')}`}</p>
+                </div>
               </div>
 
+              {/* Borde inferior dentado (como cortado del rollo) */}
+              <div
+                className="w-full h-2.5 shrink-0"
+                style={{
+                  backgroundImage: 'linear-gradient(45deg, transparent 50%, #fff 50%), linear-gradient(-45deg, transparent 50%, #fff 50%)',
+                  backgroundSize: '10px 10px',
+                  backgroundRepeat: 'repeat-x',
+                  backgroundPosition: 'top',
+                }}
+              />
             </div>
           )}
         </DialogContent>

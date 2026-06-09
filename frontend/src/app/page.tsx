@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import Autoplay from 'embla-carousel-autoplay';
+import { motion, LayoutGroup } from 'framer-motion';
 import AutoScroll from 'embla-carousel-auto-scroll';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { productsAPI, categoriesAPI } from '@/lib/api';
@@ -12,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import {
   Truck, Shield, Clock, Star, ArrowRight, Package,
   Heart, CheckCircle2, ChevronRight, Menu, X, Sparkles, MapPin,
-  Sun, Moon,
+  Sun, Moon, Instagram,
 } from 'lucide-react';
 
 const productImages = [
@@ -32,23 +31,203 @@ const carouselImages = [
   "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
   "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80",
   "https://images.unsplash.com/photo-1579113800032-c38bd7635818?w=800&q=80",
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80",
+  "https://images.unsplash.com/photo-1506617420156-8e4536971650?w=800&q=80",
+  "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80",
+  "https://images.unsplash.com/photo-1543168256-418811576931?w=800&q=80",
 ];
 
-function SlideOpacityCarousel() {
+const photoLabels = [
+  'Fiambres frescos',
+  'Combos especiales',
+  'Bebidas y mas',
+  'Ofertas semanales',
+  'Productos de calidad',
+  'Tu pedido listo',
+  'Calidad garantizada',
+  'Frescos del dia',
+  'Pedidos a domicilio',
+];
+
+const CELL = 130;
+const GRID_GAP = 5;
+const COLS = 3;
+const ROWS = 3;
+
+const gridOrders = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  [4, 7, 1, 8, 0, 5, 2, 6, 3],
+  [6, 3, 8, 1, 5, 0, 7, 2, 4],
+  [8, 0, 5, 2, 6, 3, 4, 1, 7],
+  [3, 5, 7, 0, 8, 2, 1, 4, 6],
+];
+
+function PhotoGrid() {
+  const [orderIdx, setOrderIdx] = useState(0);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const [inspecting, setInspecting] = useState<number | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    if (inspecting !== null) return; // pausar reorder mientras inspecciona
+    const interval = setInterval(() => {
+      setOrderIdx(prev => (prev + 1) % gridOrders.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [inspecting]);
+
+  const order = gridOrders[orderIdx];
+
+  useEffect(() => {
+    setFocusIdx(order[4]);
+  }, [orderIdx]);
+
+  const getPos = (slot: number) => ({
+    x: (slot % COLS) * (CELL + GRID_GAP),
+    y: Math.floor(slot / COLS) * (CELL + GRID_GAP),
+  });
+
+  const positions: Record<number, { x: number; y: number }> = {};
+  order.forEach((imgIdx, slot) => { positions[imgIdx] = getPos(slot); });
+
+  const totalW = COLS * CELL + (COLS - 1) * GRID_GAP;
+  const totalH = ROWS * CELL + (ROWS - 1) * GRID_GAP;
+
+  // Escala la grilla (de ancho fijo) para que quepa en el contenedor disponible,
+  // sin agrandarla más allá de su tamaño natural. Evita el desborde en mobile.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const update = () => {
+      const avail = el.clientWidth;
+      setScale(avail > 0 ? Math.min(1, avail / totalW) : 1);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [totalW]);
+
   return (
-    <Carousel
-      className="w-full max-w-md"
-      opts={{ loop: true }}
-      plugins={[Autoplay({ delay: 3500, stopOnInteraction: false, stopOnMouseEnter: false })]}
-    >
-      <CarouselContent>
-        {carouselImages.map((image) => (
-          <CarouselItem key={image}>
-            <img alt="minimercado" className="w-full h-72 rounded-2xl object-cover" src={image} />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
+    <>
+      <div ref={wrapperRef} className="w-full flex flex-col items-center overflow-hidden">
+        <div style={{ width: totalW * scale, height: totalH * scale }} className="relative">
+        <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }}>
+        <LayoutGroup>
+          <div className="relative" style={{ height: totalH, width: totalW, margin: '0 auto' }}>
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(imgIdx => {
+              const pos = positions[imgIdx];
+              const isFocused = imgIdx === focusIdx;
+              return (
+                <motion.div
+                  key={imgIdx}
+                  layoutId={`grid-${imgIdx}`}
+                  className={`absolute rounded-xl overflow-hidden shadow-lg border cursor-pointer ${isFocused ? 'border-white/80' : 'border-white/30'}`}
+                  animate={{
+                    x: pos.x,
+                    y: pos.y,
+                    width: CELL,
+                    height: CELL,
+                    filter: isFocused ? 'blur(0px) brightness(1.05)' : 'blur(0.5px) brightness(0.9)',
+                  }}
+                  transition={{
+                    duration: 1.4,
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                  style={{ zIndex: isFocused ? 10 : 1 }}
+                  onClick={() => setInspecting(imgIdx)}
+                >
+                  <img src={carouselImages[imgIdx]} alt="" className="w-full h-full object-cover" draggable={false} />
+                  {isFocused && (
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.6 }}
+                    >
+                      <p className="text-white text-xs font-semibold">{photoLabels[imgIdx]}</p>
+                    </motion.div>
+                  )}
+                  {isFocused && (
+                    <>
+                      <div className="absolute -top-1.5 -left-1.5 w-4 h-4 border-t-2 border-l-2 border-white/60 rounded-tl-sm" />
+                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 border-t-2 border-r-2 border-white/60 rounded-tr-sm" />
+                      <div className="absolute -bottom-1.5 -left-1.5 w-4 h-4 border-b-2 border-l-2 border-white/60 rounded-bl-sm" />
+                      <div className="absolute -bottom-1.5 -right-1.5 w-4 h-4 border-b-2 border-r-2 border-white/60 rounded-br-sm" />
+                    </>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </LayoutGroup>
+        </div>
+        </div>
+        <div className="flex justify-between items-center mt-3 px-1" style={{ width: totalW * scale }}>
+          <span className="text-[10px] text-white/40 font-mono">{String(focusIdx + 1).padStart(2, '0')}/09</span>
+          <div className="flex items-center gap-1.5">
+            <Instagram className="w-3.5 h-3.5 text-white/40" />
+            <span className="text-[10px] text-white/40 font-mono">@lapinamarense</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Inspect mode — primera persona */}
+      {inspecting !== null && (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setInspecting(null)}
+        >
+          {/* Fondo blur */}
+          <motion.div
+            className="absolute inset-0 bg-black/20 backdrop-blur-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+          />
+
+          {/* Foto acercandose */}
+          <motion.div
+            className="relative z-10 max-w-lg w-[90vw] max-h-[70vh] rounded-2xl overflow-hidden shadow-2xl border border-white/20"
+            initial={{ scale: 0.5, y: 40, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, ease: [0.2, 0, 0.2, 1] }}
+          >
+            <img
+              src={carouselImages[inspecting]}
+              alt={photoLabels[inspecting]}
+              className="w-full h-full object-cover"
+            />
+
+            {/* Label abajo */}
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-6 py-5"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <p className="text-white text-lg font-bold">{photoLabels[inspecting]}</p>
+              <p className="text-white/50 text-xs mt-1">@lapinamarense</p>
+            </motion.div>
+
+          </motion.div>
+
+          {/* Hint para cerrar */}
+          <motion.p
+            className="absolute bottom-8 text-white/30 text-xs font-mono z-10"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+          >
+            toca para volver
+          </motion.p>
+        </motion.div>
+      )}
+    </>
   );
 }
 
@@ -67,12 +246,31 @@ interface Category { id: number; name: string; }
 export default function Home() {
   const [products, setProducts]   = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [dataReady, setDataReady] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [isWelcome] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const visited = sessionStorage.getItem('lp_visited');
+    if (!visited) { sessionStorage.setItem('lp_visited', '1'); return true; }
+    return false;
+  });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark]           = useState(false);
 
   useEffect(() => {
     setDark(getStoredTheme());
+
+    if (isWelcome) {
+      setTimeout(() => setReady(true), 5000);
+    }
+
+    Promise.all([productsAPI.getAll({}), categoriesAPI.getAll()])
+      .then(([p, c]) => { setProducts(p.data); setCategories(c.data); })
+      .catch(() => {})
+      .finally(() => {
+        setDataReady(true);
+        if (!isWelcome) setReady(true);
+      });
   }, []);
 
   const toggleDark = (v: boolean) => {
@@ -80,15 +278,8 @@ export default function Home() {
     setTheme(v);
   };
 
-  useEffect(() => {
-    Promise.all([productsAPI.getAll({}), categoriesAPI.getAll()])
-      .then(([p, c]) => { setProducts(p.data); setCategories(c.data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return <Loader fullScreen />;
+  if (!ready || !dataReady) {
+    return <Loader fullScreen welcome={isWelcome} />;
   }
 
   // ── theme tokens ──────────────────────────────────────────────────────────
@@ -164,7 +355,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/auth" className={`hidden md:block text-sm transition-colors ${navLink}`}>Iniciar sesión</Link>
-            <Link href="/register" className="hidden sm:block">
+            <Link href="/auth?tab=register" className="hidden sm:block">
               <Button className="bg-green-700 hover:bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-medium">
                 Comenzar gratis
               </Button>
@@ -211,7 +402,7 @@ export default function Home() {
                 <Shield className="h-4 w-4" />
                 Iniciar sesión
               </Link>
-              <Link href="/register" onClick={() => setMobileOpen(false)}
+              <Link href="/auth?tab=register" onClick={() => setMobileOpen(false)}
                 className="flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl text-sm font-semibold bg-green-700 hover:bg-green-600 text-white transition-colors"
               >
                 <Sparkles className="h-4 w-4" />
@@ -239,15 +430,15 @@ export default function Home() {
       </div>
 
       {/* ── Hero ── */}
-      <section className={`h-[calc(100vh-4rem)] px-5 sm:px-8 lg:px-12 flex items-center transition-colors duration-300 ${heroBg}`}>
-        <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+      <section className={`min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] px-5 sm:px-8 lg:px-12 py-8 lg:py-0 flex items-center transition-colors duration-300 ${heroBg}`}>
+        <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
           <motion.div
             className="w-full lg:w-1/2"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
-            <h1 className={`text-3xl sm:text-4xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight tracking-tight ${heroTitle}`}>
+            <h1 className={`text-5xl sm:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-[1.05] tracking-tight ${heroTitle}`}>
               Tu minimercado de confianza, ahora online
             </h1>
             <p className={`text-base sm:text-lg lg:text-xl mb-6 sm:mb-10 leading-relaxed ${heroSub}`}>
@@ -264,14 +455,14 @@ export default function Home() {
                   Explorar productos <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/register">
+              <Link href="/auth?tab=register">
                 <Button size="lg" variant="outline" className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-xl font-medium ${heroBtnOut}`}>
                   Crear cuenta gratis
                 </Button>
               </Link>
             </motion.div>
             <motion.div
-              className="grid grid-cols-3 gap-4 sm:gap-8 max-w-xs sm:max-w-lg"
+              className="grid grid-cols-3 gap-4 sm:gap-8 max-w-xs sm:max-w-lg mx-auto lg:mx-0 text-center lg:text-left"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.5 }}
@@ -285,12 +476,12 @@ export default function Home() {
             </motion.div>
           </motion.div>
           <motion.div
-            className="hidden lg:flex w-1/2 items-center justify-center"
+            className="w-full lg:w-1/2 flex items-center justify-center"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
           >
-            <SlideOpacityCarousel />
+            <PhotoGrid />
           </motion.div>
         </div>
       </section>
@@ -477,7 +668,7 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <Link href="/register">
+              <Link href="/auth?tab=register">
                 <Button size="lg" className={`w-full sm:w-auto font-semibold px-6 sm:px-8 py-3 rounded-xl shadow-lg transition-all ${D ? 'bg-white hover:bg-gray-100 text-green-950' : 'bg-green-700 hover:bg-green-600 text-white'}`}>
                   Crear cuenta gratis <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -560,9 +751,12 @@ export default function Home() {
 
             {/* Links */}
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${label}`}>Enlaces</p>
+              <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${label}`}>Seguinos</p>
               <div className="flex flex-col gap-2">
-                {[['Productos','/products'],['Nosotros','/about'],['Contacto','/contact']].map(([l,h]) => (
+                <a href="https://instagram.com/lapinamarense" target="_blank" rel="noopener noreferrer" className={`text-sm transition-colors flex items-center gap-2 ${footerLink}`}>
+                  <Instagram className="h-4 w-4" /> @lapinamarense
+                </a>
+                {[['Productos','/products'],['Contacto','/contact']].map(([l,h]) => (
                   <Link key={h} href={h} className={`text-sm transition-colors ${footerLink}`}>{l}</Link>
                 ))}
               </div>

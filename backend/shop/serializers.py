@@ -1,10 +1,15 @@
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard
+from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier
 
 
 class UserSerializer(serializers.ModelSerializer):
     password       = serializers.CharField(write_only=True, required=True)
+    email          = serializers.EmailField(
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all(), message='Ese email ya está registrado')],
+    )
     is_store_owner = serializers.BooleanField(read_only=True)
     role           = serializers.CharField(read_only=True)
     avatar         = serializers.SerializerMethodField()
@@ -148,3 +153,15 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['user'] = UserSerializer(self.user).data
         return data
+
+
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = ['id', 'name', 'role', 'phone', 'shift', 'active']
+
+
+class SupplierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Supplier
+        fields = ['id', 'name', 'contact', 'phone', 'email', 'categories', 'active']

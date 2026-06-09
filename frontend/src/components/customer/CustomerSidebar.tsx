@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { cartAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
   Store, ShoppingCart, Package, User,
-  Menu, X, ChevronRight, LogOut,
+  ChevronLeft, ChevronRight, LogOut,
 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
@@ -19,19 +20,51 @@ function getInitials(user: { first_name?: string; last_name?: string; username?:
 }
 
 const navItems = [
-  { title: 'Dashboard',   href: '/cuenta',   icon: Store   },
+  { title: 'Dashboard',   href: '/dashboard',   icon: Store   },
   { title: 'Tienda',      href: '/products', icon: Store   },
   { title: 'Mi carrito',  href: '/cart',     icon: ShoppingCart },
   { title: 'Mis pedidos', href: '/orders',   icon: Package },
-  { title: 'Mi perfil',   href: '/cuenta/perfil', icon: User },
+  { title: 'Mi perfil',   href: '/dashboard/perfil', icon: User },
 ];
 
-export default function CustomerSidebar() {
-  const [collapsed, setCollapsed]     = useState(false);
-  const [mobileOpen, setMobileOpen]   = useState(false);
+interface CustomerSidebarProps {
+  /** Permite controlar la apertura mobile desde afuera (p. ej. para sincronizar con un panel derecho).
+   *  Si no se pasan, el sidebar usa estado interno. */
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
+  /** Título que muestra el header translúcido mobile. Si no se pasa, se deriva de la ruta. */
+  title?: string;
+  /** Contenido extra a la derecha del header mobile (p. ej. la flecha del panel de resumen del dashboard). */
+  rightSlot?: React.ReactNode;
+}
+
+export default function CustomerSidebar({ mobileOpen: mobileOpenProp, onMobileOpenChange, title, rightSlot }: CustomerSidebarProps = {}) {
+  const [collapsed, setCollapsed]             = useState(false);
+  const [mobileOpenInternal, setMobileOpenInternal] = useState(false);
+  const [cartCount, setCartCount]             = useState(0);
+
+  // Controlado desde afuera si se pasan las props; si no, estado propio.
+  const controlled  = mobileOpenProp !== undefined;
+  const mobileOpen  = controlled ? mobileOpenProp! : mobileOpenInternal;
+  const setMobileOpen = (open: boolean) => {
+    if (controlled) onMobileOpenChange?.(open);
+    else setMobileOpenInternal(open);
+  };
   const pathname  = usePathname();
   const router    = useRouter();
   const { user, logout } = useAuth();
+
+  // Título del header mobile: el prop tiene prioridad; si no, se busca el ítem de nav que matchea la ruta.
+  const headerTitle = title
+    ?? [...navItems].sort((a, b) => b.href.length - a.href.length).find(i => pathname.startsWith(i.href))?.title
+    ?? 'Mi cuenta';
+
+  // Refresca el contador del carrito en cada navegación.
+  useEffect(() => {
+    cartAPI.get()
+      .then(r => setCartCount(r.data?.items?.length ?? 0))
+      .catch(() => {});
+  }, [pathname]);
 
   const handleLogout = () => {
     logout();
@@ -46,20 +79,28 @@ export default function CustomerSidebar() {
         collapsed ? 'w-20' : 'w-64'
       )} />
 
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setMobileOpen(v => !v)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200"
-      >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+      {/* Header translúcido (solo mobile): siempre presente en toda sección del cliente.
+          Flecha izquierda = abrir menú (siempre). Título de la sección. rightSlot opcional a la derecha.
+          Es fixed (ancho completo del viewport); las páginas compensan con un spacer h-14 lg:hidden. */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-3 h-14 bg-white/70 backdrop-blur-md border-b border-gray-200/70">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="w-9 h-9 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center shadow-sm"
+          aria-label="Abrir menú"
+        >
+          <ChevronRight className="h-5 w-5 text-white" />
+        </button>
+        <span className="text-sm font-semibold text-gray-700 truncate">{headerTitle}</span>
+        {/* Si no hay slot derecho, un spacer para mantener el título centrado */}
+        {rightSlot ?? <span className="w-9" aria-hidden="true" />}
+      </header>
 
       {mobileOpen && (
         <div onClick={() => setMobileOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 z-40" />
       )}
 
       <aside className={cn(
-        'fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-30 flex flex-col transition-all duration-300',
+        'fixed left-0 top-0 h-screen bg-white border-r border-gray-200 z-50 flex flex-col transition-all duration-300',
         collapsed ? 'w-20' : 'w-64',
         mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}>
@@ -74,6 +115,15 @@ export default function CustomerSidebar() {
               <span className="font-semibold text-gray-900 text-sm">La Pinamarense</span>
             </Link>
           )}
+          {/* Cerrar (mobile): dentro del propio menú. Flecha hacia afuera (izquierda). */}
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="lg:hidden w-8 h-8 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center ml-auto"
+            aria-label="Cerrar menú"
+          >
+            <ChevronLeft className="h-4 w-4 text-white" />
+          </button>
+          {/* Colapsar (desktop) */}
           <button
             onClick={() => setCollapsed(v => !v)}
             className="hidden lg:flex p-1 rounded-md hover:bg-gray-100 ml-auto"
@@ -87,6 +137,7 @@ export default function CustomerSidebar() {
           {navItems.map(item => {
             const Icon = item.icon;
             const active = pathname === item.href;
+            const isCart = item.href === '/cart';
             return (
               <Link
                 key={item.href}
@@ -100,8 +151,20 @@ export default function CustomerSidebar() {
                   collapsed && 'justify-center',
                 )}
               >
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
+                <span className="relative flex-shrink-0">
+                  <Icon className="h-5 w-5" />
+                  {isCart && cartCount > 0 && collapsed && (
+                    <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[9px] font-bold leading-none">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </span>
+                {!collapsed && <span className="flex-1">{item.title}</span>}
+                {!collapsed && isCart && cartCount > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
               </Link>
             );
           })}

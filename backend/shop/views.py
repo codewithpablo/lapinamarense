@@ -2,19 +2,23 @@ import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, BasePermission, SAFE_METHODS
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken
+import requests
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.db.models.functions import TruncDate
 from django.db.models import Sum
 from datetime import timedelta
 from django.utils import timezone
-from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard
+from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier
 from .serializers import (
     UserSerializer, CategorySerializer, ProductSerializer,
     CartSerializer, CartItemSerializer, OrderSerializer, CreateOrderSerializer,
     CustomTokenObtainPairSerializer, PresencialSaleSerializer,
     ComboSerializer, ComboItemSerializer, PaymentCardSerializer,
+    EmployeeSerializer, SupplierSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +47,105 @@ def is_staff(user):
 
 def is_manager(user):
     return user.is_authenticated and user.role in ('superadmin', 'admin')
+
+
+class IsStaffOrReadOnly(BasePermission):
+    """Lecturas públicas (GET/HEAD/OPTIONS); escrituras solo para staff."""
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return is_staff(request.user)
+
+
+class IsStaff(BasePermission):
+    """Acceso solo para staff (superadmin/admin/empleado) en cualquier método."""
+    def has_permission(self, request, view):
+        return is_staff(request.user)
+
+
+class GoogleAuthView(APIView):
+    """Login/registro con Google. Recibe el access token de Google, lo valida
+    contra Google (tokeninfo: que sea válido y emitido para NUESTRO Client ID),
+    y busca o crea el usuario por email/sub. Devuelve JWT igual que el login normal."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        access_token = request.data.get('access_token')
+        if not access_token:
+            return Response({'error': 'Falta el token de Google'}, status=status.HTTP_400_BAD_REQUEST)
+        if not settings.GOOGLE_CLIENT_ID:
+            return Response({'error': 'El login con Google no está configurado en el servidor'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        # 1) Validar el access token con Google. tokeninfo confirma que el token es
+        #    válido y devuelve 'aud' = el Client ID al que fue emitido. Exigimos que
+        #    sea el NUESTRO, evitando que sirva un token emitido para otra app.
+        try:
+            ti = requests.get('https://oauth2.googleapis.com/tokeninfo',
+                              params={'access_token': access_token}, timeout=6)
+        except requests.RequestException:
+            return Response({'error': 'No se pudo validar con Google'}, status=status.HTTP_502_BAD_GATEWAY)
+        if ti.status_code != 200:
+            return Response({'error': 'Token de Google inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+        info = ti.json()
+
+        if info.get('aud') != settings.GOOGLE_CLIENT_ID:
+            return Response({'error': 'Token de Google inválido'}, status=status.HTTP_401_UNAUTHORIZED)
+        if str(info.get('email_verified')).lower() != 'true':
+            return Response({'error': 'El email de Google no está verificado'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        email = info.get('email')
+        if not email:
+            return Response({'error': 'Google no devolvió un email'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 2) Nombre (best-effort) desde userinfo
+        try:
+            ui = requests.get('https://www.googleapis.com/oauth2/v3/userinfo',
+                              headers={'Authorization': f'Bearer {access_token}'}, timeout=6)
+            profile = ui.json() if ui.status_code == 200 else {}
+        except requests.RequestException:
+            profile = {}
+
+        google_sub = info.get('sub') or profile.get('sub')
+        user = None
+        if google_sub:
+            user = User.objects.filter(google_sub=google_sub).first()
+        if user is None:
+            user = User.objects.filter(email__iexact=email).first()
+
+        if user is None:
+            # Cuenta nueva creada con Google
+            user = User(
+                username=self._unique_username(email),
+                email=email,
+                first_name=profile.get('given_name', ''),
+                last_name=profile.get('family_name', ''),
+                role='cliente',
+                google_sub=google_sub,
+            )
+            user.set_unusable_password()
+            user.save()
+        elif google_sub and not user.google_sub:
+            # Primera vez que una cuenta existente (encontrada por email) entra con Google: la vinculamos
+            user.google_sub = google_sub
+            user.save(update_fields=['google_sub'])
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user, context={'request': request}).data,
+        })
+
+    @staticmethod
+    def _unique_username(email):
+        base = (email.split('@')[0] or 'user')[:140]
+        username = base
+        i = 1
+        while User.objects.filter(username=username).exists():
+            i += 1
+            username = f'{base}{i}'
+        return username
 
 
 class UserListView(APIView):
@@ -121,7 +224,7 @@ class UserProfileView(APIView):
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsStaffOrReadOnly]
 
     def list(self, request, *args, **kwargs):
         # ?flat=1 returns all categories (for admin); default returns tree
@@ -135,7 +238,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.filter(is_active=True)
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsStaffOrReadOnly]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -159,7 +262,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 class ComboViewSet(viewsets.ModelViewSet):
     queryset = Combo.objects.filter(is_active=True).prefetch_related('items__product')
     serializer_class = ComboSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsStaffOrReadOnly]
 
     @action(detail=True, methods=['post', 'delete'])
     def item(self, request, pk=None):
@@ -180,6 +283,18 @@ class ComboViewSet(viewsets.ModelViewSet):
             product_id = request.data.get('product_id')
             ComboItem.objects.filter(combo=combo, product_id=product_id).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class EmployeeViewSet(viewsets.ModelViewSet):
+    queryset = Employee.objects.all()
+    serializer_class = EmployeeSerializer
+    permission_classes = [IsStaff]
+
+
+class SupplierViewSet(viewsets.ModelViewSet):
+    queryset = Supplier.objects.all()
+    serializer_class = SupplierSerializer
+    permission_classes = [IsStaff]
 
 
 class CartViewSet(viewsets.ModelViewSet):

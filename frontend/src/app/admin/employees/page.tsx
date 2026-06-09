@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Sidebar from '@/components/admin/Sidebar';
+import { employeesAPI } from '@/lib/api';
 import { Plus, Loader2 } from 'lucide-react';
 
 interface Employee { id: number; name: string; role: string; phone: string; shift: string; active: boolean }
@@ -27,17 +28,8 @@ const ROLE_COLORS: Record<string, string> = {
   'Administrativo':'bg-orange-100 text-orange-700 border-orange-200',
 };
 
-const INITIAL: Employee[] = [
-  { id: 1, name: 'Sofía Martínez',  role: 'Cajera',     phone: '2254-501001', shift: 'Mañana', active: true  },
-  { id: 2, name: 'Diego Fernández', role: 'Repositor',  phone: '2254-501002', shift: 'Tarde',  active: true  },
-  { id: 3, name: 'Laura Gómez',     role: 'Cajera',     phone: '2254-501003', shift: 'Tarde',  active: true  },
-  { id: 4, name: 'Martín Sosa',     role: 'Repositor',  phone: '2254-501004', shift: 'Mañana', active: false },
-  { id: 5, name: 'Ana Rodríguez',   role: 'Encargada',  phone: '2254-501005', shift: 'Mañana', active: true  },
-  { id: 6, name: 'Carlos López',    role: 'Repositor',  phone: '2254-501006', shift: 'Noche',  active: true  },
-];
-
 export default function EmployeesPage() {
-  const [employees, setEmployees]   = useState<Employee[]>(INITIAL);
+  const [employees, setEmployees]   = useState<Employee[]>([]);
   const [modalOpen, setModalOpen]   = useState(false);
   const [deleteId, setDeleteId]     = useState<number | null>(null);
   const [editing, setEditing]       = useState<Employee | null>(null);
@@ -45,6 +37,11 @@ export default function EmployeesPage() {
   const [saving, setSaving]         = useState(false);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const load = () => {
+    employeesAPI.getAll().then(r => setEmployees(r.data || [])).catch(() => setEmployees([]));
+  };
+  useEffect(() => { load(); }, []);
 
   const openAdd  = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); };
   const openEdit = (e: Employee) => {
@@ -56,24 +53,28 @@ export default function EmployeesPage() {
   const handleSave = async () => {
     if (!form.name.trim() || !form.role) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 300));
-    if (editing) {
-      setEmployees(prev => prev.map(e => e.id === editing.id ? { ...e, ...form, active: form.active === 'true' } : e));
-    } else {
-      const newId = Math.max(0, ...employees.map(e => e.id)) + 1;
-      setEmployees(prev => [...prev, { id: newId, ...form, active: form.active === 'true' }]);
-    }
-    setModalOpen(false);
-    setSaving(false);
+    const payload = { name: form.name, role: form.role, phone: form.phone, shift: form.shift, active: form.active === 'true' };
+    try {
+      if (editing) await employeesAPI.update(editing.id, payload);
+      else         await employeesAPI.create(payload);
+      load();
+      setModalOpen(false);
+    } catch { console.error('Error al guardar el empleado'); }
+    finally { setSaving(false); }
   };
 
-  const toggleActive = (id: number) => {
-    setEmployees(prev => prev.map(e => e.id === id ? { ...e, active: !e.active } : e));
+  const toggleActive = async (id: number) => {
+    const emp = employees.find(e => e.id === id);
+    if (!emp) return;
+    try { await employeesAPI.update(id, { active: !emp.active }); load(); }
+    catch { console.error('Error al cambiar el estado'); }
   };
 
-  const handleDelete = () => {
-    setEmployees(prev => prev.filter(e => e.id !== deleteId));
-    setDeleteId(null);
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try { await employeesAPI.delete(deleteId); load(); }
+    catch { console.error('Error al eliminar el empleado'); }
+    finally { setDeleteId(null); }
   };
 
   const active = employees.filter(e => e.active).length;

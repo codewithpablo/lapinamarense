@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Sidebar from '@/components/admin/Sidebar';
 import { Plus } from 'lucide-react';
 import Loader from '@/components/ui/loader';
+import api from '@/lib/api';
 
 interface Customer {
   id: number;
@@ -29,13 +30,11 @@ export default function CustomersPage() {
 
   const fetchCustomers = async () => {
     try {
-      // Simulated data - replace with actual API call
-      setCustomers([
-        { id: 1, username: 'juanperez', email: 'juan@example.com', first_name: 'Juan', last_name: 'Pérez', phone: '11-1234-5678', address: 'Av. Corrientes 1234' },
-        { id: 2, username: 'mariagarcia', email: 'maria@example.com', first_name: 'María', last_name: 'García', phone: '11-9876-5432', address: 'Calle Florida 567' },
-      ]);
+      const res = await api.get('/auth/users/');
+      setCustomers(res.data || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }

@@ -55,44 +55,6 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800 border-red-200',
 };
 
-const MOCK_ORDERS: Order[] = [
-  { id: 101, status: 'delivered',  total_amount: 4850,  user: { username: 'sofia_m' },    delivery_address: 'Av. Constitución 123', phone: '2254-401234', created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-  { id: 100, status: 'preparing',  total_amount: 2340,  user: { username: 'carlos_r' },   delivery_address: 'Calle 3 N°456',        phone: '2254-402345', created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString() },
-  { id: 99,  status: 'confirmed',  total_amount: 7120,  user: { username: 'laura_v' },    delivery_address: 'Mitre 789',            phone: '2254-403456', created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString() },
-  { id: 98,  status: 'pending',    total_amount: 1560,  user: { username: 'diego_p' },    delivery_address: 'San Martín 321',       phone: '2254-404567', created_at: new Date(Date.now() - 1000 * 60 * 300).toISOString() },
-  { id: 97,  status: 'delivered',  total_amount: 9200,  user: { username: 'ana_flores' }, delivery_address: 'Belgrano 654',         phone: '2254-405678', created_at: new Date(Date.now() - 1000 * 60 * 480).toISOString() },
-  { id: 96,  status: 'cancelled',  total_amount: 3400,  user: { username: 'martin_g' },   delivery_address: 'Rivadavia 987',        phone: '2254-406789', created_at: new Date(Date.now() - 1000 * 60 * 600).toISOString() },
-];
-
-const MOCK_PRODUCTS: Product[] = [
-  { id: 1,  name: 'Yerba Mate 1kg',         price: 2800, stock: 45, category_name: 'Infusiones' },
-  { id: 2,  name: 'Arroz Largo Fino 1kg',   price: 1200, stock: 3,  category_name: 'Almacén' },
-  { id: 3,  name: 'Aceite de Girasol 1L',   price: 1850, stock: 28, category_name: 'Almacén' },
-  { id: 4,  name: 'Azúcar 1kg',             price: 950,  stock: 7,  category_name: 'Almacén' },
-  { id: 5,  name: 'Fideos Spaghetti 500g',  price: 780,  stock: 60, category_name: 'Pastas' },
-  { id: 6,  name: 'Leche Entera 1L',        price: 1100, stock: 0,  category_name: 'Lácteos' },
-  { id: 7,  name: 'Harina 000 1kg',         price: 850,  stock: 32, category_name: 'Almacén' },
-  { id: 8,  name: 'Café Molido 250g',       price: 2100, stock: 4,  category_name: 'Infusiones' },
-  { id: 9,  name: 'Jabón en Polvo 1kg',     price: 3200, stock: 18, category_name: 'Limpieza' },
-  { id: 10, name: 'Sal Fina 1kg',           price: 450,  stock: 50, category_name: 'Almacén' },
-  { id: 11, name: 'Pan Lactal Blanco',      price: 1650, stock: 0,  category_name: 'Panadería' },
-  { id: 12, name: 'Manteca 200g',           price: 1900, stock: 2,  category_name: 'Lácteos' },
-  { id: 13, name: 'Galletitas Crackers',    price: 980,  stock: 0,  category_name: 'Almacén' },
-  { id: 14, name: 'Queso Cremoso 1kg',      price: 4200, stock: 1,  category_name: 'Lácteos' },
-  { id: 15, name: 'Papel Higiénico x4',     price: 2400, stock: 6,  category_name: 'Limpieza' },
-  { id: 16, name: 'Lavandina 1L',           price: 650,  stock: 8,  category_name: 'Limpieza' },
-  { id: 17, name: 'Dulce de Leche 400g',    price: 1750, stock: 5,  category_name: 'Almacén' },
-  { id: 18, name: 'Cerveza Lata 473ml',     price: 1200, stock: 0,  category_name: 'Bebidas' },
-];
-
-const MOCK_TOP_PRODUCTS = [
-  { ...MOCK_PRODUCTS[0], sold: 87,  revenue: 243600 },
-  { ...MOCK_PRODUCTS[4], sold: 74,  revenue: 57720  },
-  { ...MOCK_PRODUCTS[2], sold: 61,  revenue: 112850 },
-  { ...MOCK_PRODUCTS[8], sold: 55,  revenue: 176000 },
-  { ...MOCK_PRODUCTS[6], sold: 48,  revenue: 40800  },
-];
-
 const G = { dark:'#166534', mid:'#16a34a', soft:'#4ade80', pale:'#86efac', mist:'#bbf7d0', fog:'#dcfce7', sage:'#6ee7b7', teal:'#2dd4bf' };
 const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 
@@ -103,7 +65,6 @@ export default function AdminPage() {
   const [loading, setLoading]     = useState(true);
   const [searchOrders, setSearchOrders] = useState('');
   const [searchStock, setSearchStock]   = useState('');
-  const [searchTop, setSearchTop]       = useState('');
   const [updatingOrder, setUpdatingOrder] = useState<number | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null);
   const { user } = useAuth();
@@ -117,12 +78,12 @@ export default function AdminPage() {
         productsAPI.getAll(),
         api.get('/auth/users/').catch(() => ({ data: [] })),
       ]);
-      setOrders(ordersRes.data?.length ? ordersRes.data : MOCK_ORDERS);
-      setProducts(productsRes.data?.length ? productsRes.data : MOCK_PRODUCTS);
+      setOrders(ordersRes.data || []);
+      setProducts(productsRes.data || []);
       setCustomerCount((usersRes.data as any[]).length);
     } catch {
-      setOrders(MOCK_ORDERS);
-      setProducts(MOCK_PRODUCTS);
+      setOrders([]);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -142,17 +103,14 @@ export default function AdminPage() {
   // ── Metrics ──
   const todaySales = orders
     .filter(o => new Date(o.created_at).toDateString() === new Date().toDateString())
-    .reduce((s, o) => s + Number(o.total_amount), 0) || 14070;
+    .reduce((s, o) => s + Number(o.total_amount), 0);
 
   const monthlySales = orders
     .filter(o => { const d = new Date(o.created_at); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear(); })
-    .reduce((s, o) => s + Number(o.total_amount), 0) || 284600;
+    .reduce((s, o) => s + Number(o.total_amount), 0);
 
-  const realOutOfStock = products.filter(p => p.stock === 0);
-  const realLowStock   = products.filter(p => p.stock > 0 && p.stock < 10);
-  // Si no hay alertas reales, usar mock para demo
-  const outOfStock = realOutOfStock.length > 0 ? realOutOfStock : MOCK_PRODUCTS.filter(p => p.stock === 0);
-  const lowStock   = realLowStock.length > 0 ? realLowStock : MOCK_PRODUCTS.filter(p => p.stock > 0 && p.stock < 10);
+  const outOfStock = products.filter(p => p.stock === 0);
+  const lowStock   = products.filter(p => p.stock > 0 && p.stock < 10);
   const pendingOrders = orders.filter(o => ['pending','confirmed','preparing'].includes(o.status));
 
   // ── Chart data: ventas diarias (últimos 7 días) ──
@@ -164,8 +122,7 @@ export default function AdminPage() {
     orders.filter(o => new Date(o.created_at).toDateString() === day.toDateString())
       .reduce((s, o) => s + Number(o.total_amount), 0)
   );
-  const hasSalesData = dailySales.some(v => v > 0);
-  const salesValues = hasSalesData ? dailySales : [8200, 12400, 9800, 15600, 11200, 14070, 13500];
+  const salesValues = dailySales;
 
   const lineData = {
     labels: last7.map(d => DAYS[d.getDay()]),
@@ -396,30 +353,8 @@ export default function AdminPage() {
                   <p className="text-[11px] text-gray-400 mt-0.5">Nunca dejes que se agoten estos</p>
                 </div>
               </div>
-              <div className="shrink-0 relative mb-2">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-300" />
-                <input type="text" placeholder="Buscar producto..." value={searchTop} onChange={e => setSearchTop(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 bg-gray-50" />
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
-                {MOCK_TOP_PRODUCTS
-                  .filter(p => p.name.toLowerCase().includes(searchTop.toLowerCase()) || (p.category_name || '').toLowerCase().includes(searchTop.toLowerCase()))
-                  .map((product, i) => {
-                    const stockProduct = products.find(p => p.id === product.id) || product;
-                    const stockOk = stockProduct.stock > 10;
-                    return (
-                      <div key={product.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <span className="text-lg font-bold text-gray-200 w-6 text-center shrink-0">{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                          <p className="text-[10px] text-gray-400">{product.sold} vendidos · ${product.revenue.toLocaleString('es-AR')}</p>
-                        </div>
-                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${stockOk ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                          {stockOk ? `${stockProduct.stock} uds ✓` : `${stockProduct.stock} uds ⚠`}
-                        </span>
-                      </div>
-                    );
-                  })}
+              <div className="flex-1 min-h-0 flex items-center justify-center">
+                <p className="text-xs text-gray-400 text-center px-4">Sin datos de ventas todavía.<br />Aparecerán cuando haya pedidos.</p>
               </div>
             </CardContent>
           </Card>

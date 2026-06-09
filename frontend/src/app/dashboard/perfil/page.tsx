@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileAPI, ordersAPI } from '@/lib/api';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
@@ -32,7 +31,7 @@ function Field({label,icon:Icon,value,onChange,type='text',placeholder=''}:any) 
   );
 }
 
-function PwField({label,field,value,onChange,show,onToggle}:{label:string;field:string;value:string;onChange:(v:string)=>void;show:boolean;onToggle:()=>void}) {
+function PwField({label,field,value,onChange,show,onToggle,placeholder='••••••••'}:{label:string;field:string;value:string;onChange:(v:string)=>void;show:boolean;onToggle:()=>void;placeholder?:string}) {
   return (
     <div>
       <label className="text-[11px] font-semibold text-gray-500 mb-1 block">{label}</label>
@@ -42,12 +41,14 @@ function PwField({label,field,value,onChange,show,onToggle}:{label:string;field:
           type={show?'text':'password'}
           value={value}
           onChange={(e:any)=>onChange(e.target.value)}
-          placeholder="••••••••"
-          className="pl-8 pr-9 h-9 text-sm border-gray-200 bg-gray-50 focus:bg-white transition-colors"
+          placeholder={placeholder}
+          className="pl-8 pr-10 h-9 text-sm border-gray-200 bg-gray-50 focus:bg-white transition-colors"
         />
-        <button type="button" onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-          {show ? <EyeOff className="h-3.5 w-3.5"/> : <Eye className="h-3.5 w-3.5"/>}
+        <button type="button" onClick={onToggle} tabIndex={-1}
+          aria-label={show?'Ocultar contraseña':'Mostrar contraseña'}
+          title={show?'Ocultar':'Mostrar'}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-green-700 hover:bg-green-50 transition-colors">
+          {show ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
         </button>
       </div>
     </div>
@@ -80,7 +81,6 @@ function Stat({icon:Icon,label,value,sub,color='text-green-700',bg='bg-green-50'
 
 export default function PerfilPage() {
   const { user, isLoading, refreshUser } = useAuth() as any;
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm]     = useState({ first_name:'', last_name:'', email:'', phone:'', address:'' });
@@ -93,8 +93,6 @@ export default function PerfilPage() {
   const [msg, setMsg]     = useState<{type:'ok'|'err'; text:string}|null>(null);
   const [pwMsg, setPwMsg] = useState<{type:'ok'|'err'; text:string}|null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-
-  useEffect(() => { if (!isLoading && !user) router.push('/auth'); }, [user, isLoading, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -155,15 +153,15 @@ export default function PerfilPage() {
     : user.username[0].toUpperCase();
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-gray-50 flex flex-col lg:flex-row lg:overflow-hidden">
       <CustomerSidebar/>
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange}/>
 
-      <main className="flex-1 p-5 overflow-hidden">
-        <div className="h-full grid grid-cols-[270px_1fr] gap-4">
+      <main className="flex-1 p-4 lg:p-5 pt-[4.5rem] lg:pt-5 lg:overflow-hidden">
+        <div className="lg:h-full grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-4">
 
           {/* ── Columna izquierda ── */}
-          <div className="flex flex-col gap-4 min-h-0">
+          <div className="flex flex-col gap-4 lg:min-h-0">
 
             {/* Avatar + nombre */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center shrink-0">
@@ -200,7 +198,7 @@ export default function PerfilPage() {
             </div>
 
             {/* Stats */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto no-scrollbar">
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3">Actividad</p>
               <div className="space-y-2.5">
                 <Stat icon={Wallet}     label="Total gastado"    value={`$${totalSpent.toLocaleString('es-AR')}`}             color="text-green-700"  bg="bg-green-50"/>
@@ -216,20 +214,20 @@ export default function PerfilPage() {
           </div>
 
           {/* ── Columna derecha ── */}
-          <div className="flex flex-col gap-4 min-h-0">
+          <div className="flex flex-col gap-4 lg:min-h-0">
 
             {/* Datos personales */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex-1 min-h-0 flex flex-col">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 lg:flex-1 lg:min-h-0 flex flex-col">
               <h2 className="text-xs font-bold text-gray-700 mb-4 flex items-center gap-1.5 shrink-0">
                 <User className="h-3.5 w-3.5 text-green-600"/> Datos personales
               </h2>
               <div className="flex-1 min-h-0 flex flex-col justify-between">
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Nombre"   icon={User}  value={form.first_name} onChange={(v:string)=>setForm(f=>({...f,first_name:v}))} placeholder="Tu nombre"/>
                     <Field label="Apellido" icon={User}  value={form.last_name}  onChange={(v:string)=>setForm(f=>({...f,last_name:v}))}  placeholder="Tu apellido"/>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="Email"    icon={Mail}  value={form.email} onChange={(v:string)=>setForm(f=>({...f,email:v}))}  placeholder="tu@email.com" type="email"/>
                     <Field label="Teléfono" icon={Phone} value={form.phone} onChange={(v:string)=>setForm(f=>({...f,phone:v}))}  placeholder="2254 123456"/>
                   </div>
@@ -253,12 +251,12 @@ export default function PerfilPage() {
                 <Lock className="h-3.5 w-3.5 text-green-600"/> Contraseña
               </h2>
               <p className="text-[10px] text-gray-400 mb-3">
-                Tu contraseña está guardada de forma segura. Ingresá la actual para poder cambiarla.
+                Por seguridad tu contraseña se guarda cifrada y no puede mostrarse. Escribí la actual y tu nueva contraseña; usá el ojito para ver lo que tipeás.
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <PwField label="Contraseña actual" field="old"     value={pwForm.old_password} onChange={v=>setPwForm(f=>({...f,old_password:v}))}     show={showPw.old}     onToggle={()=>setShowPw(s=>({...s,old:!s.old}))}/>
-                <PwField label="Nueva contraseña"  field="new"     value={pwForm.new_password} onChange={v=>setPwForm(f=>({...f,new_password:v}))}     show={showPw.new}     onToggle={()=>setShowPw(s=>({...s,new:!s.new}))}/>
-                <PwField label="Confirmar"         field="confirm" value={pwForm.confirm}       onChange={v=>setPwForm(f=>({...f,confirm:v}))}           show={showPw.confirm} onToggle={()=>setShowPw(s=>({...s,confirm:!s.confirm}))}/>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <PwField label="Contraseña actual" field="old"     value={pwForm.old_password} onChange={v=>setPwForm(f=>({...f,old_password:v}))}     show={showPw.old}     onToggle={()=>setShowPw(s=>({...s,old:!s.old}))}     placeholder="Tu contraseña actual"/>
+                <PwField label="Nueva contraseña"  field="new"     value={pwForm.new_password} onChange={v=>setPwForm(f=>({...f,new_password:v}))}     show={showPw.new}     onToggle={()=>setShowPw(s=>({...s,new:!s.new}))}     placeholder="Mínimo 6 caracteres"/>
+                <PwField label="Confirmar"         field="confirm" value={pwForm.confirm}       onChange={v=>setPwForm(f=>({...f,confirm:v}))}           show={showPw.confirm} onToggle={()=>setShowPw(s=>({...s,confirm:!s.confirm}))} placeholder="Repetí la nueva"/>
               </div>
               {pwMsg&&<Alert m={pwMsg}/>}
               <div className="flex justify-end mt-3">

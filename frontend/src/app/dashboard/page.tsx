@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,10 +8,11 @@ import { ordersAPI, cartAPI } from '@/lib/api';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   ShoppingCart, ArrowRight, Loader2, Sprout, Trophy, Gem, Star,
   TrendingUp, Clock, ShoppingBag, Wallet, Receipt, CalendarDays,
-  User, MapPin,
+  User, MapPin, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import Loader from '@/components/ui/loader';
 
@@ -49,14 +49,14 @@ const GREEN_SHADES = [G.dark, G.mid, G.soft, G.sage, G.teal, G.pale];
 
 export default function CuentaPage() {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
 
   const [orders, setOrders]         = useState<Order[]>([]);
   const [storeHours, setStoreHours] = useState<number[]>(Array(24).fill(0));
   const [cartCount, setCartCount]   = useState(0);
   const [loading, setLoading]       = useState(true);
-
-  useEffect(() => { if (!isLoading && !user) router.push('/auth'); }, [user, isLoading, router]);
+  const [rightCollapsed, setRightCollapsed]     = useState(false);
+  const [rightMobileOpen, setRightMobileOpen]   = useState(false);
+  const [leftMobileOpen, setLeftMobileOpen]     = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -105,7 +105,7 @@ export default function CuentaPage() {
   const monthlyEntries = Object.entries(monthlyMap).sort().slice(-8);
   const last6Labels    = Array.from({length:6}, (_,i) => { const d=new Date(); d.setMonth(d.getMonth()-5+i); return MONTHS[d.getMonth()]; });
   const areaLabels     = monthlyEntries.length ? monthlyEntries.map(([k]) => MONTHS[parseInt(k.split('-')[1])-1]) : last6Labels;
-  const areaValues     = monthlyEntries.length ? monthlyEntries.map(([,v]) => v) : [8500,22000,15000,38000,29000,51000];
+  const areaValues     = monthlyEntries.length ? monthlyEntries.map(([,v]) => v) : [0,0,0,0,0,0];
 
   const areaData = {
     labels: areaLabels,
@@ -126,8 +126,8 @@ export default function CuentaPage() {
   };
 
   const doughnutKeys    = Object.keys(byStatus);
-  const doughnutLabels  = doughnutKeys.length ? doughnutKeys.map(k => STATUS[k]?.label ?? k) : ['Entregado','Pendiente','En camino'];
-  const doughnutValues  = doughnutKeys.length ? Object.values(byStatus) : [6,2,1];
+  const doughnutLabels  = doughnutKeys.length ? doughnutKeys.map(k => STATUS[k]?.label ?? k) : ['Sin pedidos'];
+  const doughnutValues  = doughnutKeys.length ? Object.values(byStatus) : [0];
   const doughnutTotal   = doughnutValues.reduce((a,b)=>a+b,0);
   const doughnutData    = {
     labels: doughnutLabels,
@@ -138,14 +138,13 @@ export default function CuentaPage() {
     plugins:{ legend:{position:'bottom' as const, labels:{font:{size:10},boxWidth:8,padding:10,color:'#6b7280'}}, tooltip:{callbacks:{label:(ctx:any)=>` ${ctx.label}: ${ctx.raw}`}} },
   };
 
-  const dayData = byDay.some(v=>v>0) ? byDay : [2,5,3,7,4,8,1];
+  const dayData = byDay;
   const barDayData = {
     labels: DAYS,
     datasets:[{ label:'Pedidos', data:dayData, backgroundColor:dayData.map(v=>v===Math.max(...dayData)&&v>0?G.mid:v>0?G.pale:G.fog), borderRadius:8, borderSkipped:false }],
   };
 
-  const fallbackHours = Array(24).fill(0).map((_,h)=> h<8||h>21?1:h>=11&&h<=13?8:h>=18&&h<=20?7:3);
-  const hourData      = storeHours.some(v=>v>0) ? storeHours : fallbackHours;
+  const hourData      = storeHours;
   const peakH         = hourData.indexOf(Math.max(...hourData));
   const barHourData   = {
     labels: hourData.map((_,h)=>h%4===0?`${h}h`:''),
@@ -168,18 +167,35 @@ export default function CuentaPage() {
   const last = areaValues[areaValues.length-1] ?? 0;
   const growthPct = prev > 0 ? Math.round(((last-prev)/prev)*100) : 0;
   const topDay    = dayData.indexOf(Math.max(...dayData));
+  const hasOrders = orders.length > 0;
+  const hasHourData = hourData.some(v => v > 0);
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
-      <CustomerSidebar />
+    <div className="min-h-screen lg:h-screen bg-gray-50 flex flex-col lg:flex-row lg:overflow-hidden">
+      <CustomerSidebar
+        mobileOpen={leftMobileOpen}
+        onMobileOpenChange={setLeftMobileOpen}
+        title="Mi dashboard"
+        rightSlot={
+          <button
+            onClick={() => setRightMobileOpen(true)}
+            className="w-9 h-9 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center shadow-sm"
+            aria-label="Abrir resumen"
+          >
+            <ChevronLeft className="h-5 w-5 text-white" />
+          </button>
+        }
+      />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden">
+
+        <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden">
 
         {/* ── 2×2 chart grid ── */}
-        <main className="flex-1 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4 overflow-y-auto lg:overflow-hidden">
+        <main className="flex-1 p-3 pt-[4.5rem] lg:pt-4 lg:p-4 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4 lg:overflow-hidden">
 
           {/* 1 — Evolución de compras */}
-          <Card className="border-0 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <Card className="border border-gray-200 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
             <CardContent className="p-4 flex flex-col flex-1 min-h-0">
               <div className="shrink-0 flex items-start justify-between mb-2">
                 <div>
@@ -211,7 +227,7 @@ export default function CuentaPage() {
           </Card>
 
           {/* 2 — Estado de pedidos */}
-          <Card className="border-0 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <Card className="border border-gray-200 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
             <CardContent className="p-4 flex flex-col flex-1 min-h-0">
               <div className="shrink-0 mb-2">
                 <p className="text-sm font-semibold text-gray-900">Estado de pedidos</p>
@@ -240,7 +256,7 @@ export default function CuentaPage() {
           </Card>
 
           {/* 3 — Mis días de compra */}
-          <Card className="border-0 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <Card className="border border-gray-200 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
             <CardContent className="p-4 flex flex-col flex-1 min-h-0">
               <div className="shrink-0 flex items-start justify-between mb-2">
                 <div>
@@ -249,9 +265,11 @@ export default function CuentaPage() {
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">Pedidos por día de la semana</p>
                 </div>
-                <span className="text-[10px] font-semibold bg-green-50 text-green-700 px-2 py-1 rounded-full shrink-0">
-                  {DAYS[topDay]} es tu día
-                </span>
+                {hasOrders && (
+                  <span className="text-[10px] font-semibold bg-green-50 text-green-700 px-2 py-1 rounded-full shrink-0">
+                    {DAYS[topDay]} es tu día
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-h-0">
                 <BarChart data={barDayData} options={barOpts as any} />
@@ -272,7 +290,7 @@ export default function CuentaPage() {
           </Card>
 
           {/* 4 — Tráfico por hora */}
-          <Card className="border-0 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <Card className="border border-gray-200 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
             <CardContent className="p-4 flex flex-col flex-1 min-h-0">
               <div className="shrink-0 flex items-start justify-between mb-2">
                 <div>
@@ -296,15 +314,56 @@ export default function CuentaPage() {
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{background:G.mist}} /> Normal</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm inline-block" style={{background:G.soft}} /> Pico</span>
                 </div>
-                <span className="text-[10px] text-gray-400">Pico: <span className="font-semibold text-gray-600">{peakH}:00h</span></span>
+                <span className="text-[10px] text-gray-400">{hasHourData ? <>Pico: <span className="font-semibold text-gray-600">{peakH}:00h</span></> : 'Sin datos aún'}</span>
               </div>
             </CardContent>
           </Card>
 
         </main>
 
-        {/* ── RIGHT SIDEBAR ── */}
-        <aside className="w-64 flex-shrink-0 border-l border-gray-100 bg-white flex flex-col overflow-y-auto no-scrollbar">
+        {/* ── RIGHT SIDEBAR ──
+            Desktop (lg): panel fijo al costado derecho, colapsable con la flechita.
+            Mobile: drawer deslizable (se abre desde el header translúcido) + overlay. */}
+
+        {/* Overlay oscuro detrás del drawer (solo mobile) */}
+        {rightMobileOpen && (
+          <div onClick={() => setRightMobileOpen(false)} className="lg:hidden fixed inset-0 bg-black/40 z-40" />
+        )}
+
+        <aside className={cn(
+          'bg-white flex flex-col overflow-y-auto no-scrollbar transition-all duration-300',
+          // Mobile: drawer fijo a la derecha, ancho casi total, desliza desde la derecha
+          'fixed right-0 top-0 h-screen w-72 max-w-[85vw] z-50 border-l border-gray-100',
+          rightMobileOpen ? 'translate-x-0' : 'translate-x-full',
+          // Desktop: vuelve a ser un panel en flujo, sin transform, colapsable
+          'lg:static lg:translate-x-0 lg:h-auto lg:max-w-none lg:flex-shrink-0 lg:z-auto',
+          rightCollapsed ? 'lg:w-12' : 'lg:w-64',
+        )}>
+          {/* Header del panel: cerrar (mobile) + colapsar (desktop) */}
+          <div className={cn(
+            'h-12 shrink-0 flex items-center border-b border-gray-100',
+            rightCollapsed ? 'lg:justify-center' : 'px-3',
+            rightCollapsed ? 'justify-end' : 'justify-end lg:justify-start',
+          )}>
+            {/* Cerrar (mobile): flecha hacia afuera (derecha) */}
+            <button
+              onClick={() => setRightMobileOpen(false)}
+              className="lg:hidden w-8 h-8 rounded-full bg-green-700 hover:bg-green-800 active:scale-95 transition flex items-center justify-center"
+              aria-label="Cerrar resumen"
+            >
+              <ChevronRight className="h-4 w-4 text-white" />
+            </button>
+            {/* Colapsar (desktop) */}
+            <button
+              onClick={() => setRightCollapsed(v => !v)}
+              className="hidden lg:flex p-1 rounded-md hover:bg-gray-100"
+              title={rightCollapsed ? 'Expandir panel' : 'Colapsar panel'}
+            >
+              <ChevronRight className={`h-4 w-4 text-gray-400 transition-transform ${rightCollapsed ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+          {/* En mobile el panel siempre está expandido (el colapso es feature de desktop). */}
+          <div className={rightCollapsed ? 'block lg:hidden' : 'block'}>
           <div className="p-5 flex flex-col gap-5">
 
             {/* Perfil */}
@@ -324,9 +383,6 @@ export default function CuentaPage() {
                   <MapPin className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{user.address}</span>
                 </p>
               )}
-              <div className={`inline-flex items-center gap-1 mt-2 text-xs font-semibold px-2.5 py-1 rounded-full ${level.bg} ${level.color}`}>
-                <level.Icon className="h-3.5 w-3.5" /> {level.name}
-              </div>
             </div>
 
             <hr className="border-gray-100" />
@@ -427,7 +483,9 @@ export default function CuentaPage() {
             )}
 
           </div>
+          </div>
         </aside>
+        </div>
       </div>
     </div>
   );
