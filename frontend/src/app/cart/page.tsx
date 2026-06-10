@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { cartAPI } from '@/lib/api';
+import { cart as cartLib } from '@/lib/cart';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,25 +34,25 @@ export default function CartPage() {
 
   const fetchCart = async () => {
     try {
-      const res = await cartAPI.get();
-      setCart(res.data);
+      const data = await cartLib.get();
+      setCart(data);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
   };
 
   const updateQuantity = async (productId: number, qty: number) => {
     if (qty < 1) return;
-    await cartAPI.updateItem(productId, qty).catch(() => {});
+    await cartLib.update(productId, qty).catch(() => {});
     fetchCart();
   };
 
   const removeItem = async (productId: number) => {
-    await cartAPI.removeItem(productId).catch(() => {});
+    await cartLib.remove(productId).catch(() => {});
     fetchCart();
   };
 
   const clearCart = async () => {
-    await cartAPI.clear().catch(() => {});
+    await cartLib.clear().catch(() => {});
     fetchCart();
   };
 
@@ -101,11 +101,11 @@ export default function CartPage() {
               <div className="lg:col-span-2 space-y-3">
                 {cart.items.map(item => (
                   <Card key={item.id} className="border-0 shadow-sm bg-white">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex items-center gap-2.5 sm:gap-4">
 
                         {/* Image */}
-                        <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {item.product.image_url
                             ? <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
                             : <Package className="h-6 w-6 text-gray-300" />

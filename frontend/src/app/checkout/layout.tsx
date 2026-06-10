@@ -1,5 +1,4 @@
-import RouteGuard from '@/components/auth/RouteGuard';
-
+// El checkout es público: un invitado puede confirmar su pedido sin cuenta.
 export default function CheckoutLayout({ children }: { children: React.ReactNode }) {
-  return <RouteGuard access="customer">{children}</RouteGuard>;
+  return <>{children}</>;
 }

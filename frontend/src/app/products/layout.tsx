@@ -1,5 +1,4 @@
-import RouteGuard from '@/components/auth/RouteGuard';
-
+// La tienda es pública: se puede ver sin iniciar sesión.
 export default function ProductsLayout({ children }: { children: React.ReactNode }) {
-  return <RouteGuard access="customer">{children}</RouteGuard>;
+  return <>{children}</>;
 }

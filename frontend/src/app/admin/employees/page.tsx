@@ -106,8 +106,8 @@ export default function EmployeesPage() {
       cell: (e) => (
         <button onClick={() => toggleActive(e.id)} className="cursor-pointer">
           {e.active
-            ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border hover:bg-green-200">Activo</Badge>
-            : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border hover:bg-gray-200">Inactivo</Badge>}
+            ? <Badge className="bg-green-100 text-green-700 border-green-200 text-xs border">Activo</Badge>
+            : <Badge className="bg-gray-100  text-gray-500  border-gray-200  text-xs border">Inactivo</Badge>}
         </button>
       ),
     },

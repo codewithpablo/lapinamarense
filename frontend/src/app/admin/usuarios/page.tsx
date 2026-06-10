@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { rolesAPI } from '@/lib/api';
+import { rolesAPI, branchesAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
@@ -22,6 +22,15 @@ interface UserRow {
   email: string;
   role: UserRole;
   is_active: boolean;
+  branch: number | null;
+  branch__name: string | null;
+}
+
+interface Branch {
+  id: number;
+  name: string;
+  slug: string;
+  address: string;
 }
 
 const ROLES: UserRole[] = ['superadmin', 'admin', 'empleado', 'cliente'];
@@ -44,8 +53,10 @@ export default function UsuariosPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [users, setUsers]       = useState<UserRow[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState<number | null>(null);
+  const [savingBranch, setSavingBranch] = useState<number | null>(null);
   const [tab, setTab]           = useState<'empleados' | 'clientes'>('empleados');
 
   // Gestión de usuarios/roles: SOLO superadmin.
@@ -55,10 +66,13 @@ export default function UsuariosPage() {
     if (isLoading) return;
     if (!user) { router.replace('/auth'); return; }
     if (!isSuperadmin) { router.replace('/admin'); return; }
-    rolesAPI.getUsers()
-      .then(r => setUsers(r.data as UserRow[]))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      rolesAPI.getUsers(),
+      branchesAPI.getAll().catch(() => ({ data: [] })),
+    ]).then(([usersRes, branchesRes]) => {
+      setUsers(usersRes.data as UserRow[]);
+      setBranches(branchesRes.data as Branch[]);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [isLoading, user, isSuperadmin, router]);
 
   if (isLoading || !user || !isSuperadmin) return null;
@@ -75,6 +89,16 @@ export default function UsuariosPage() {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
     } catch {}
     finally { setSaving(null); }
+  };
+
+  const handleBranchChange = async (id: number, branchId: number | null) => {
+    setSavingBranch(id);
+    try {
+      await rolesAPI.updateBranch(id, branchId);
+      const name = branchId ? (branches.find(b => b.id === branchId)?.name ?? null) : null;
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, branch: branchId, branch__name: name } : u));
+    } catch {}
+    finally { setSavingBranch(null); }
   };
 
   const columns: DataTableColumn<UserRow>[] = [
@@ -115,6 +139,38 @@ export default function UsuariosPage() {
           {ROLE_LABEL[u.role]}
         </Badge>
       ),
+    },
+    {
+      key: 'sucursal',
+      header: 'Sucursal',
+      hideOnMobile: true,
+      stopClick: true,
+      cell: (u) => {
+        // Los clientes no trabajan en una sucursal.
+        if (u.role === 'cliente') return <span className="text-xs text-gray-300">—</span>;
+        if (savingBranch === u.id) return <Loader2 className="h-4 w-4 animate-spin text-gray-400" />;
+        return (
+          <Select
+            value={u.branch ? String(u.branch) : 'none'}
+            onValueChange={v => handleBranchChange(u.id, v === 'none' ? null : Number(v))}
+          >
+            <SelectTrigger className="h-auto min-h-9 text-xs w-52 py-1.5">
+              <SelectValue placeholder="Sin asignar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin asignar</SelectItem>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={String(b.id)}>
+                  <div className="flex flex-col text-left">
+                    <span className="font-medium">{b.name}</span>
+                    {b.address && <span className="text-[10px] text-gray-400 leading-tight">{b.address}</span>}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
     },
     {
       key: 'cambiar',

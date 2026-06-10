@@ -18,6 +18,8 @@ class User(AbstractUser):
     avatar         = models.ImageField(upload_to='avatars/', blank=True, null=True)
     email          = models.EmailField(unique=True)
     google_sub     = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    # Sucursal donde trabaja (solo para staff; los clientes no tienen sucursal).
+    branch         = models.ForeignKey('Branch', on_delete=models.SET_NULL, null=True, blank=True, related_name='staff')
 
     class Meta:
         swappable = 'AUTH_USER_MODEL'
@@ -141,9 +143,23 @@ class Order(models.Model):
         ('presencial', 'Presencial'),
     ]
 
+    PAYMENT_CHOICES = [
+        ('efectivo', 'Efectivo'),
+        ('transferencia', 'Transferencia'),
+    ]
+
+    DELIVERY_CHOICES = [
+        ('envio', 'Envío a domicilio'),
+        ('retiro', 'Retiro en el local'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='online')
+    payment_method  = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='efectivo')
+    delivery_method = models.CharField(max_length=20, choices=DELIVERY_CHOICES, default='envio')
+    # Nombre del contacto cuando el pedido es de un invitado (sin cuenta).
+    guest_name = models.CharField(max_length=120, blank=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_address = models.TextField()
     phone = models.CharField(max_length=20)
@@ -226,6 +242,24 @@ class Supplier(models.Model):
     categories = models.CharField(max_length=200, blank=True)
     active     = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Branch(models.Model):
+    """Sucursal del negocio (Fontana, Resistencia, …). Cada una es una fila."""
+    name       = models.CharField(max_length=100, unique=True)
+    slug       = models.SlugField(max_length=100, unique=True)
+    address    = models.CharField(max_length=200, blank=True)
+    phone      = models.CharField(max_length=30, blank=True)
+    is_active  = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Branches'
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         ordering = ['id']

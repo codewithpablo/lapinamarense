@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { productsAPI, categoriesAPI, cartAPI } from '@/lib/api';
+import { productsAPI, categoriesAPI } from '@/lib/api';
+import { cart } from '@/lib/cart';
 import { useAuth } from '@/contexts/AuthContext';
 import CustomerSidebar from '@/components/customer/CustomerSidebar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -138,13 +139,17 @@ export default function ProductsPage() {
     if (flyoutTimer.current) clearTimeout(flyoutTimer.current);
   };
 
-  // ── addToCart ───────────────────────────────────────────────────────────
-  const addToCart = async (productId: number) => {
-    if (!user) { window.location.href = '/auth'; return; }
-    setAddingId(productId);
+  // ── addToCart (funciona logueado o como invitado) ────────────────────────
+  const addToCart = async (product: Product) => {
+    setAddingId(product.id);
     try {
-      await cartAPI.addItem(productId, 1);
-      setAddedId(productId);
+      await cart.add({
+        id: product.id,
+        name: product.name,
+        price: Number(product.discount_price ?? product.price),
+        image: product.image || product.image_url,
+      });
+      setAddedId(product.id);
       setTimeout(() => setAddedId(null), 1500);
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -209,7 +214,7 @@ export default function ProductsPage() {
             )}
             <Button
               className={`w-full h-8 text-xs font-medium rounded-lg transition-all ${addedId === product.id ? 'bg-green-500 hover:bg-green-500 text-white' : 'bg-green-800 hover:bg-green-700 text-white'}`}
-              onClick={() => addToCart(product.id)}
+              onClick={() => addToCart(product)}
               disabled={product.stock === 0 || addingId === product.id}
             >
               {addingId === product.id
@@ -279,7 +284,7 @@ export default function ProductsPage() {
           {loading ? (
             <Loader />
           ) : activeTab === 'productos' ? (<>
-            <div className="relative mb-4 max-w-sm">
+            <div className="relative mb-4 w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
               <Input
                 placeholder="Buscar productos..."

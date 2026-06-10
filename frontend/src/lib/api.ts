@@ -114,6 +114,14 @@ export const ordersAPI = {
   getAll: () => api.get('/orders/'),
   getById: (id: number) => api.get(`/orders/${id}/`),
   create: (data: any) => api.post('/orders/', data),
+  // Pedido de un cliente sin cuenta (invitado).
+  guest: (data: {
+    items: { product_id: number; quantity: number }[];
+    name: string; phone: string;
+    payment_method: 'efectivo' | 'transferencia';
+    delivery_method: 'envio' | 'retiro';
+    delivery_address?: string; notes?: string;
+  }) => api.post('/orders/guest/', data),
   presencial: (data: { items: { product_id: number; quantity: number }[]; customer_id?: number | null; notes?: string }) =>
     api.post('/orders/presencial/', data),
   updateStatus: (id: number, status: string) =>
@@ -136,6 +144,11 @@ export const profileAPI = {
 export const rolesAPI = {
   getUsers: ()                           => api.get('/auth/roles/'),
   updateRole: (id: number, role: string) => api.patch(`/auth/roles/${id}/`, { role }),
+  updateBranch: (id: number, branch: number | null) => api.patch(`/auth/roles/${id}/`, { branch }),
+};
+
+export const branchesAPI = {
+  getAll: () => api.get('/branches/'),
 };
 
 export const employeesAPI = {

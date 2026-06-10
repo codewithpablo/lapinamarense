@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { cartAPI } from '@/lib/api';
+import { cart as cartLib } from '@/lib/cart';
 import { cn } from '@/lib/utils';
 import {
   Store, ShoppingCart, Package, User,
-  ChevronLeft, ChevronRight, LogOut,
+  ChevronLeft, ChevronRight, LogOut, LogIn,
 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
@@ -20,11 +20,11 @@ function getInitials(user: { first_name?: string; last_name?: string; username?:
 }
 
 const navItems = [
-  { title: 'Dashboard',   href: '/dashboard',   icon: Store   },
-  { title: 'Tienda',      href: '/products', icon: Store   },
-  { title: 'Mi carrito',  href: '/cart',     icon: ShoppingCart },
-  { title: 'Mis pedidos', href: '/orders',   icon: Package },
-  { title: 'Mi perfil',   href: '/dashboard/perfil', icon: User },
+  { title: 'Dashboard',   href: '/dashboard',   icon: Store,        guest: false },
+  { title: 'Tienda',      href: '/products', icon: Store,           guest: true  },
+  { title: 'Mi carrito',  href: '/cart',     icon: ShoppingCart,    guest: true  },
+  { title: 'Mis pedidos', href: '/orders',   icon: Package,         guest: false },
+  { title: 'Mi perfil',   href: '/dashboard/perfil', icon: User,    guest: false },
 ];
 
 interface CustomerSidebarProps {
@@ -59,12 +59,17 @@ export default function CustomerSidebar({ mobileOpen: mobileOpenProp, onMobileOp
     ?? [...navItems].sort((a, b) => b.href.length - a.href.length).find(i => pathname.startsWith(i.href))?.title
     ?? 'Mi cuenta';
 
-  // Refresca el contador del carrito en cada navegación.
+  // Refresca el contador del carrito (logueado o invitado) en cada navegación
+  // y cuando cambia el carrito de invitado (evento 'cart-changed').
   useEffect(() => {
-    cartAPI.get()
-      .then(r => setCartCount(r.data?.items?.length ?? 0))
-      .catch(() => {});
+    const refresh = () => cartLib.get().then(d => setCartCount(d.items?.length ?? 0)).catch(() => {});
+    refresh();
+    window.addEventListener('cart-changed', refresh);
+    return () => window.removeEventListener('cart-changed', refresh);
   }, [pathname]);
+
+  // Ítems de navegación visibles: si es invitado, solo los marcados como guest.
+  const visibleNav = user ? navItems : navItems.filter(i => i.guest);
 
   const handleLogout = () => {
     logout();
@@ -134,7 +139,7 @@ export default function CustomerSidebar({ mobileOpen: mobileOpenProp, onMobileOp
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-          {navItems.map(item => {
+          {visibleNav.map(item => {
             const Icon = item.icon;
             const active = pathname === item.href;
             const isCart = item.href === '/cart';
@@ -172,53 +177,60 @@ export default function CustomerSidebar({ mobileOpen: mobileOpenProp, onMobileOp
 
         {/* Footer */}
         <div className="p-3 border-t border-gray-100 space-y-1">
-          {/* User profile con popover de logout */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                className={cn(
-                  'w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-gray-100 transition-colors text-left',
-                  collapsed && 'justify-center px-0'
-                )}
-              >
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.username}
-                    className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-green-100"
-                  />
-                ) : (
-                  <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-semibold ring-2 ring-green-100">
-                    {getInitials(user)}
-                  </div>
-                )}
-                {!collapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {user ? (`${user.first_name} ${user.last_name}`.trim() || user.username) : 'Usuario'}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {user?.email ?? ''}
-                    </p>
-                  </div>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              side="top"
-              align={collapsed ? 'center' : 'start'}
-              sideOffset={8}
-              className="w-52 p-1.5"
+          {user ? (
+            /* Usuario logueado: perfil con popover de logout */
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    'w-full flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-gray-100 transition-colors text-left',
+                    collapsed && 'justify-center px-0'
+                  )}
+                >
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.username}
+                      className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-green-100"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 bg-gradient-to-br from-green-500 to-green-700 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-semibold ring-2 ring-green-100">
+                      {getInitials(user)}
+                    </div>
+                  )}
+                  {!collapsed && (
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {`${user.first_name} ${user.last_name}`.trim() || user.username}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{user?.email ?? ''}</p>
+                    </div>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align={collapsed ? 'center' : 'start'} sideOffset={8} className="w-52 p-1.5">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Cerrar sesión
+                </button>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            /* Invitado: botón para iniciar sesión / crear cuenta */
+            <Link
+              href="/auth"
+              className={cn(
+                'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 bg-green-700 hover:bg-green-800 text-white text-sm font-medium transition-colors',
+                collapsed && 'justify-center px-0'
+              )}
             >
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </button>
-            </PopoverContent>
-          </Popover>
+              <LogIn className="h-4 w-4 shrink-0" />
+              {!collapsed && 'Iniciar sesión'}
+            </Link>
+          )}
         </div>
       </aside>
     </>

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier
+from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier, Branch
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -114,10 +114,30 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     user = UserSerializer(read_only=True)
+    payment_method_display  = serializers.CharField(source='get_payment_method_display', read_only=True)
+    delivery_method_display = serializers.CharField(source='get_delivery_method_display', read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'status', 'source', 'total_amount', 'delivery_address', 'phone', 'notes', 'items', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'status', 'source', 'payment_method', 'payment_method_display',
+                  'delivery_method', 'delivery_method_display', 'guest_name',
+                  'total_amount', 'delivery_address', 'phone', 'notes', 'items', 'created_at', 'updated_at']
+
+
+class GuestOrderItemSerializer(serializers.Serializer):
+    product_id = serializers.IntegerField()
+    quantity   = serializers.IntegerField(min_value=1)
+
+
+class GuestOrderSerializer(serializers.Serializer):
+    """Pedido de un cliente SIN cuenta (invitado). Trae sus datos de contacto."""
+    items           = GuestOrderItemSerializer(many=True)
+    name            = serializers.CharField(max_length=120)
+    phone           = serializers.CharField(max_length=20)
+    payment_method  = serializers.ChoiceField(choices=['efectivo', 'transferencia'])
+    delivery_method = serializers.ChoiceField(choices=['envio', 'retiro'])
+    delivery_address = serializers.CharField(required=False, allow_blank=True, default='')
+    notes           = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class PresencialSaleItemSerializer(serializers.Serializer):
@@ -132,9 +152,11 @@ class PresencialSaleSerializer(serializers.Serializer):
 
 
 class CreateOrderSerializer(serializers.Serializer):
-    delivery_address = serializers.CharField()
+    delivery_address = serializers.CharField(required=False, allow_blank=True, default='')
     phone = serializers.CharField(max_length=20)
     notes = serializers.CharField(required=False, allow_blank=True)
+    payment_method  = serializers.ChoiceField(choices=['efectivo', 'transferencia'], required=False, default='efectivo')
+    delivery_method = serializers.ChoiceField(choices=['envio', 'retiro'], required=False, default='envio')
 
 
 class PaymentCardSerializer(serializers.ModelSerializer):
@@ -165,3 +187,9 @@ class SupplierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Supplier
         fields = ['id', 'name', 'contact', 'phone', 'email', 'categories', 'active']
+
+
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Branch
+        fields = ['id', 'name', 'slug', 'address', 'phone', 'is_active', 'is_default']

@@ -5,7 +5,7 @@ from .views import (
     CustomTokenObtainPairView, RegisterView, UserListView, UserProfileView,
     UserRoleView, GoogleAuthView,
     CategoryViewSet, ProductViewSet, ComboViewSet, CartViewSet, OrderViewSet,
-    PaymentCardViewSet, EmployeeViewSet, SupplierViewSet,
+    PaymentCardViewSet, EmployeeViewSet, SupplierViewSet, BranchViewSet,
 )
 
 router = DefaultRouter()
@@ -17,6 +17,7 @@ router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'cards', PaymentCardViewSet, basename='card')
 router.register(r'employees', EmployeeViewSet)
 router.register(r'suppliers', SupplierViewSet)
+router.register(r'branches', BranchViewSet)
 
 urlpatterns = [
     path('auth/login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

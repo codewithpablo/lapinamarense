@@ -26,27 +26,27 @@ const productImages = [
 ];
 
 const carouselImages = [
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
-  "https://images.unsplash.com/photo-1610348725531-843dff563e2c?w=800&q=80",
-  "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80",
-  "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=800&q=80",
-  "https://images.unsplash.com/photo-1579113800032-c38bd7635818?w=800&q=80",
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80",
-  "https://images.unsplash.com/photo-1506617420156-8e4536971650?w=800&q=80",
-  "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80",
-  "https://images.unsplash.com/photo-1543168256-418811576931?w=800&q=80",
+  "https://images.unsplash.com/photo-1452195100486-9cc805987862?w=800&q=80", // tabla de fiambres
+  "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=800&q=80", // quesos
+  "https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=800&q=80", // salame en rodajas
+  "https://images.unsplash.com/photo-1631379578550-7038263db699?w=800&q=80", // tabla de quesos
+  "https://images.unsplash.com/photo-1601000938259-9e92002320b2?w=800&q=80", // picada / charcutería
+  "https://images.unsplash.com/photo-1452251889946-8ff5ea7b27ab?w=800&q=80", // fiambres / embutidos
+  "https://images.unsplash.com/photo-1438522014717-d7ce32b9bab9?w=800&q=80", // quesos
+  "https://images.unsplash.com/photo-1626957341926-98752fc2ba90?w=800&q=80", // queso en cuña
+  "https://images.unsplash.com/photo-1573821663912-6df460f9c684?w=800&q=80", // tabla picada
 ];
 
 const photoLabels = [
-  'Fiambres frescos',
-  'Combos especiales',
-  'Bebidas y mas',
-  'Ofertas semanales',
-  'Productos de calidad',
-  'Tu pedido listo',
-  'Calidad garantizada',
-  'Frescos del dia',
-  'Pedidos a domicilio',
+  'Tabla de fiambres',
+  'Quesos seleccionados',
+  'Salame artesanal',
+  'Tabla de quesos',
+  'Picadas para compartir',
+  'Jamón crudo y cocido',
+  'Salamines',
+  'Quesos especiales',
+  'Picada La Pinamarense',
 ];
 
 const CELL = 130;
@@ -138,7 +138,17 @@ function PhotoGrid() {
                   style={{ zIndex: isFocused ? 10 : 1 }}
                   onClick={() => setInspecting(imgIdx)}
                 >
-                  <img src={carouselImages[imgIdx]} alt="" className="w-full h-full object-cover" draggable={false} />
+                  <img
+                    src={carouselImages[imgIdx]}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                    onError={(e) => {
+                      const t = e.currentTarget;
+                      t.onerror = null;
+                      t.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%2316a34a"/></svg>';
+                    }}
+                  />
                   {isFocused && (
                     <motion.div
                       className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2"
@@ -438,11 +448,11 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
-            <h1 className={`text-5xl sm:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-[1.05] tracking-tight ${heroTitle}`}>
-              Tu minimercado de confianza, ahora online
+            <h1 className={`text-4xl sm:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 leading-[1.1] sm:leading-[1.05] tracking-tight ${heroTitle}`}>
+              Tu <span className="font-fiambreria">fiambrería</span> de confianza, ahora online
             </h1>
             <p className={`text-base sm:text-lg lg:text-xl mb-6 sm:mb-10 leading-relaxed ${heroSub}`}>
-              Compra productos frescos de calidad premium y recíbelos en la puerta de tu casa.
+              Comprá productos frescos de calidad premium y recibilos en la puerta de tu casa.
             </p>
             <motion.div
               className="flex flex-col sm:flex-row gap-3 mb-8 sm:mb-12"
@@ -452,7 +462,7 @@ export default function Home() {
             >
               <Link href="/products">
                 <Button size="lg" className="w-full sm:w-auto bg-green-700 hover:bg-green-600 text-white px-6 sm:px-8 py-3 rounded-xl font-medium shadow-lg">
-                  Explorar productos <ArrowRight className="ml-2 h-4 w-4" />
+                  Comprar ahora <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/auth?tab=register">
@@ -725,7 +735,7 @@ export default function Home() {
                 </div>
                 <span className={`font-semibold ${title}`}>La Pinamarense</span>
               </div>
-              <p className={`text-sm leading-relaxed ${muted}`}>Tu minimercado de confianza con productos frescos y de calidad.</p>
+              <p className={`text-sm leading-relaxed ${muted}`}>Tu fiambrería de confianza con productos frescos y de calidad.</p>
             </div>
 
             {/* Sucursales */}

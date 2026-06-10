@@ -127,6 +127,23 @@ function AuthPage() {
   const [regError, setRegError]   = useState('');
   const [regLoading, setRegLoading] = useState(false);
 
+  // Prellenar el registro con los datos del invitado que recién compró (si los hay).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('pending_register');
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      setRegData(prev => ({
+        ...prev,
+        first_name: d.first_name || prev.first_name,
+        last_name:  d.last_name  || prev.last_name,
+        phone:      d.phone      || prev.phone,
+        address:    d.address    || prev.address,
+      }));
+      localStorage.removeItem('pending_register');
+    } catch {}
+  }, []);
+
   const { login, loginWithGoogle, register, user, isLoading } = useAuth();
   const router = useRouter();
   const rawRedirect = searchParams.get('redirect') || '/';

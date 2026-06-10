@@ -12,13 +12,13 @@ from django.db.models.functions import TruncDate
 from django.db.models import Sum
 from datetime import timedelta
 from django.utils import timezone
-from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier
+from .models import User, Category, Product, Cart, CartItem, Order, OrderItem, Combo, ComboItem, PaymentCard, Employee, Supplier, Branch
 from .serializers import (
     UserSerializer, CategorySerializer, ProductSerializer,
     CartSerializer, CartItemSerializer, OrderSerializer, CreateOrderSerializer,
     CustomTokenObtainPairSerializer, PresencialSaleSerializer,
     ComboSerializer, ComboItemSerializer, PaymentCardSerializer,
-    EmployeeSerializer, SupplierSerializer,
+    EmployeeSerializer, SupplierSerializer, BranchSerializer, GuestOrderSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,8 +167,9 @@ class UserRoleView(APIView):
     def get(self, request):
         if request.user.role != 'superadmin':
             return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
-        users = User.objects.exclude(pk=request.user.pk).values(
-            'id', 'username', 'first_name', 'last_name', 'email', 'role', 'is_active'
+        users = User.objects.exclude(pk=request.user.pk).select_related('branch').values(
+            'id', 'username', 'first_name', 'last_name', 'email', 'role', 'is_active',
+            'branch', 'branch__name',
         )
         return Response(list(users))
 
@@ -179,12 +180,32 @@ class UserRoleView(APIView):
             target = User.objects.get(pk=pk)
         except User.DoesNotExist:
             return Response({'error': 'Usuario no encontrado'}, status=status.HTTP_404_NOT_FOUND)
-        new_role = request.data.get('role')
-        if new_role not in ('superadmin', 'admin', 'empleado', 'cliente'):
-            return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
-        target.role = new_role
+
+        # Cambiar rol (opcional)
+        if 'role' in request.data:
+            new_role = request.data.get('role')
+            if new_role not in ('superadmin', 'admin', 'empleado', 'cliente'):
+                return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
+            target.role = new_role
+
+        # Cambiar sucursal (opcional): branch=<id> o branch=null/"" para quitar
+        if 'branch' in request.data:
+            branch_id = request.data.get('branch')
+            if branch_id in (None, '', 'null'):
+                target.branch = None
+            else:
+                try:
+                    target.branch = Branch.objects.get(pk=branch_id)
+                except (Branch.DoesNotExist, ValueError, TypeError):
+                    return Response({'error': 'Sucursal inválida'}, status=status.HTTP_400_BAD_REQUEST)
+
         target.save()
-        return Response({'id': target.pk, 'role': target.role})
+        return Response({
+            'id': target.pk,
+            'role': target.role,
+            'branch': target.branch_id,
+            'branch_name': target.branch.name if target.branch else None,
+        })
 
 
 class UserProfileView(APIView):
@@ -297,6 +318,13 @@ class SupplierViewSet(viewsets.ModelViewSet):
     permission_classes = [IsStaff]
 
 
+class BranchViewSet(viewsets.ModelViewSet):
+    """Sucursales. Lectura para staff; escritura solo staff (alta/baja de sucursales)."""
+    queryset = Branch.objects.all()
+    serializer_class = BranchSerializer
+    permission_classes = [IsStaffOrReadOnly]
+
+
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     permission_classes = [IsAuthenticated]
@@ -397,12 +425,15 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         serializer = CreateOrderSerializer(data=request.data)
         if serializer.is_valid():
+            v = serializer.validated_data
             order = Order.objects.create(
                 user=request.user,
                 total_amount=cart.total_price(),
-                delivery_address=serializer.validated_data['delivery_address'],
-                phone=serializer.validated_data['phone'],
-                notes=serializer.validated_data.get('notes', '')
+                delivery_address=v.get('delivery_address', ''),
+                phone=v['phone'],
+                notes=v.get('notes', ''),
+                payment_method=v.get('payment_method', 'efectivo'),
+                delivery_method=v.get('delivery_method', 'envio'),
             )
 
             for cart_item in cart.items.all():
@@ -419,6 +450,51 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response(order_serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def guest(self, request):
+        """Crea un pedido de un cliente SIN cuenta (invitado)."""
+        serializer = GuestOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+
+        if not data['items']:
+            return Response({'error': 'El carrito está vacío'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Cliente placeholder compartido para invitados (mismo patrón que ventas presenciales).
+        guest_user, _ = User.objects.get_or_create(
+            username='anonimo',
+            defaults=dict(first_name='Cliente', last_name='Anónimo', email='anonimo@pinamarense.com'),
+        )
+
+        # Validar productos y calcular total
+        total = 0
+        line_items = []
+        for item in data['items']:
+            try:
+                product = Product.objects.get(id=item['product_id'], is_active=True)
+            except Product.DoesNotExist:
+                return Response({'error': f'Producto {item["product_id"]} no encontrado'}, status=status.HTTP_400_BAD_REQUEST)
+            total += product.price * item['quantity']
+            line_items.append((product, item['quantity']))
+
+        order = Order.objects.create(
+            user=guest_user,
+            status='pending',
+            source='online',
+            payment_method=data['payment_method'],
+            delivery_method=data['delivery_method'],
+            guest_name=data['name'],
+            total_amount=total,
+            delivery_address=data.get('delivery_address', '') or ('Retiro en el local' if data['delivery_method'] == 'retiro' else ''),
+            phone=data['phone'],
+            notes=data.get('notes', ''),
+        )
+        for product, quantity in line_items:
+            OrderItem.objects.create(order=order, product=product, quantity=quantity, price=product.price)
+
+        return Response(OrderSerializer(order, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])
     def presencial(self, request):

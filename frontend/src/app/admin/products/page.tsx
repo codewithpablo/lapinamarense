@@ -311,7 +311,7 @@ export default function ProductsPage() {
                     key: 'stock', header: 'Stock', align: 'center', stopClick: true,
                     cell: (product) => (
                       <button onClick={() => openAdjust(product)} className="cursor-pointer">
-                        <Badge className={`text-xs border ${product.stock === 0 ? 'bg-red-100 text-red-700 border-red-200' : product.stock < 10 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-green-100 text-green-700 border-green-200'} hover:opacity-80`}>
+                        <Badge className={`text-xs border ${product.stock === 0 ? 'bg-red-100 text-red-700 border-red-200' : product.stock < 10 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-green-100 text-green-700 border-green-200'}`}>
                           {product.stock === 0 ? 'Sin stock' : product.stock}
                         </Badge>
                       </button>

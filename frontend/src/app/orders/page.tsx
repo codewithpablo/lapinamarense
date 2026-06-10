@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
 import { Loader2, ArrowRight, ShoppingBag, ChevronDown, Check } from 'lucide-react';
 import Loader from '@/components/ui/loader';
@@ -100,10 +101,19 @@ function TicketPine() {
   );
 }
 
+// Columna dinámica de mobile (las fijas son # y Fecha).
+type MobileCol = 'estado' | 'total' | 'productos';
+const MOBILE_COLS: { key: MobileCol; label: string }[] = [
+  { key: 'estado',    label: 'Estado'    },
+  { key: 'total',     label: 'Total'     },
+  { key: 'productos', label: 'Productos' },
+];
+
 export default function OrdersPage() {
   const [orders, setOrders]     = useState<Order[]>([]);
   const [loading, setLoading]   = useState(true);
   const [selected, setSelected] = useState<Order | null>(null);
+  const [mobileCol, setMobileCol] = useState<MobileCol>('estado');
   const { user } = useAuth();
   const router = useRouter();
 
@@ -133,6 +143,22 @@ export default function OrdersPage() {
                 <p className="text-xs text-gray-400 mt-0.5">{orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'} en total</p>
               )}
             </div>
+            {/* Selector de la 3ª columna (solo mobile) */}
+            {!loading && orders.length > 0 && (
+              <div className="sm:hidden flex items-center gap-2 shrink-0">
+                <span className="text-[11px] text-gray-400">Ver:</span>
+                <Select value={mobileCol} onValueChange={v => setMobileCol(v as MobileCol)}>
+                  <SelectTrigger className="h-9 w-28 sm:w-32 text-xs font-medium border-gray-200 bg-white shadow-sm rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOBILE_COLS.map(c => (
+                      <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {loading ? (
@@ -156,18 +182,42 @@ export default function OrdersPage() {
               getRowKey={(o) => o.id}
               onRowClick={(o) => setSelected(o)}
               columns={[
+                // ── Fijas (visibles en mobile y desktop) ──
                 {
-                  key: 'id', header: '#', className: 'w-16',
+                  key: 'id', header: '#', className: 'w-14',
                   cell: (order) => <span className="font-mono text-xs text-gray-400">{order.id}</span>,
                 },
                 {
                   key: 'fecha', header: 'Fecha',
                   cell: (order) => (
                     <span className="text-xs text-gray-600 whitespace-nowrap">
-                      {new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      <span className="sm:hidden">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}</span>
+                      <span className="hidden sm:inline">{new Date(order.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                     </span>
                   ),
                 },
+                // ── Columna dinámica (SOLO mobile): muestra lo que elige el select ──
+                {
+                  key: 'dinamica', header: MOBILE_COLS.find(c => c.key === mobileCol)?.label ?? '',
+                  className: 'sm:hidden', stopClick: mobileCol === 'estado',
+                  cell: (order) => {
+                    if (mobileCol === 'estado') {
+                      return isStaff(user?.role)
+                        ? <StatusChanger order={order} onUpdate={handleStatusUpdate} />
+                        : <StatusBadge status={order.status} />;
+                    }
+                    if (mobileCol === 'total') {
+                      return <span className="font-semibold text-xs text-gray-900 whitespace-nowrap">${Number(order.total_amount).toLocaleString('es-AR')}</span>;
+                    }
+                    return (
+                      <div className="max-w-[40vw]">
+                        <p className="text-xs text-gray-700 truncate">{order.items.map(i => i.product.name).join(', ')}</p>
+                        <p className="text-[10px] text-gray-400">{order.items.length} {order.items.length === 1 ? 'prod.' : 'prods.'}</p>
+                      </div>
+                    );
+                  },
+                },
+                // ── Resto (SOLO desktop) ──
                 {
                   key: 'productos', header: 'Productos', hideOnMobile: true,
                   cell: (order) => (
@@ -178,13 +228,13 @@ export default function OrdersPage() {
                   ),
                 },
                 {
-                  key: 'estado', header: 'Estado', stopClick: true,
+                  key: 'estado', header: 'Estado', stopClick: true, hideOnMobile: true,
                   cell: (order) => isStaff(user?.role)
                     ? <StatusChanger order={order} onUpdate={handleStatusUpdate} />
                     : <StatusBadge status={order.status} />,
                 },
                 {
-                  key: 'total', header: 'Total', align: 'right',
+                  key: 'total', header: 'Total', align: 'right', hideOnMobile: true,
                   cell: (order) => (
                     <span className="font-semibold text-xs text-gray-900 whitespace-nowrap">
                       ${Number(order.total_amount).toLocaleString('es-AR')}
@@ -203,7 +253,7 @@ export default function OrdersPage() {
 
       {/* Detail modal */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-[420px] p-0 gap-0 border-0 bg-transparent shadow-none [&>button]:top-2 [&>button]:right-2 [&>button]:text-gray-400">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[420px] p-0 gap-0 border-0 bg-transparent shadow-none [&>button]:top-2 [&>button]:right-2 [&>button]:text-gray-400">
           {selected && (
             <div className="bg-white text-gray-800 font-mono flex flex-col max-h-[88vh]" style={{ filter: 'drop-shadow(0 14px 22px rgba(0,0,0,0.22))' }}>
               <DialogTitle className="sr-only">Comprobante del pedido #{selected.id}</DialogTitle>
