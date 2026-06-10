@@ -20,7 +20,7 @@ import Loader from '@/components/ui/loader';
 
 const ALIAS = 'lapinamarense';
 const TITULAR = 'Héctor Waldemar Alarcón';
-const WHATSAPP = '5493624851127'; // NÚMERO DE PRUEBA (3624-851127)
+const WHATSAPP = '5493624219435'; // La Pinamarense (3624-219435)
 
 type Payment = 'efectivo' | 'transferencia';
 type Delivery = 'envio' | 'retiro';
